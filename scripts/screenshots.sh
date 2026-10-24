@@ -99,10 +99,12 @@ print(ok[-1] if ok else "")')
   duoctl open --duration 1
   sleep "$DELAY"
   duoctl screenshot "$dir/02-open.png"
+  # The inner screen starts in landscape, fold down the middle: the book pose. Turned to portrait, the fold runs
+  # across the screen: the tabletop pose.
   duoctl half --duration 1
   sleep "$DELAY"
   duoctl screenshot "$dir/03-half-book.png"
-  duoctl rotate landscape
+  duoctl rotate portrait
   sleep "$DELAY"
   duoctl screenshot "$dir/04-half-tabletop.png"
   ls "$dir"/*.png
