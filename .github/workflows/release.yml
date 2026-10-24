@@ -110,4 +110,4 @@ jobs:
 
       - name: No App Store Connect key
         if: steps.version.outputs.exists == 'false' && env.ASC_KEY == ''
-        run: echo "::warning::No App Store Connect key in the secrets: GitHub release only, nothing sent to TestFlight"
+        run: echo "::warning::No App Store Connect key in the secrets, GitHub release only (nothing sent to TestFlight)"
