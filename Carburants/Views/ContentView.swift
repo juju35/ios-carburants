@@ -3,16 +3,16 @@ import MapKit
 import SwiftUI
 
 /// Map with the stations, and their list over it, as in Plans: a sheet on a compact width (iPhone, iPhone Duo
-/// closed or in Split View), a floating side panel on a regular one (iPhone Duo open flat, iPad). iPhone Duo partly
-/// folded (around 90°): the map and the list each take one side of the fold, see `FoldedLayout`.
+/// closed or in Split View), the list over the map on a regular one (iPhone Duo open, iPad). From iOS 27.1 the
+/// regular layout is an overlay arrangement, as Apple's iPhone Duo guidelines ask for a foreground over a
+/// background: the system places the panel, and puts it beside the map, clear of the fold, when the iPhone Duo is
+/// partly folded.
 struct ContentView: View {
     @Bindable var model: StationsModel
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var camera: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var detent: PresentationDetent = Self.middle
     @State private var framed = false
-    /// The hinge band while an iPhone Duo is partly folded, nil otherwise.
-    @State private var fold: CGRect?
 
     private static let middle = PresentationDetent.fraction(0.42)
     private static let panelWidth: CGFloat = 420
@@ -21,18 +21,13 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let hinge = Fold.band(in: proxy)
-            Group {
-                if let hinge {
-                    FoldedLayout(model: model, camera: $camera, fold: hinge, size: proxy.size)
-                } else {
-                    unfolded(height: proxy.size.height)
-                }
+            if isRegular, #available(iOS 27.1, *) {
+                ArrangedLayout(model: model, camera: $camera)
+            } else {
+                unfolded(height: proxy.size.height)
             }
-            .onChange(of: hinge, initial: true) { _, band in fold = band }
         }
-        // Partly folded, the list has its own half of the screen: no sheet.
-        .sheet(isPresented: .constant(!isRegular && fold == nil)) {
+        .sheet(isPresented: .constant(!isRegular)) {
             StationBrowser(model: model, showsFuelButton: false)
                 .presentationDetents([.height(110), Self.middle, .large], selection: $detent)
                 .presentationBackgroundInteraction(.enabled(upThrough: Self.middle))
@@ -60,7 +55,7 @@ struct ContentView: View {
         }
     }
 
-    /// Flat or closed: the map full screen, the list in the sheet or the side panel.
+    /// Compact: the map full screen and the list in the sheet. Regular before iOS 27.1: the list in a side panel.
     private func unfolded(height: CGFloat) -> some View {
         ZStack(alignment: .topLeading) {
             // The map fills the whole screen, under the status bar wherever it is (on the side on iPhone Duo), and
@@ -95,37 +90,22 @@ struct ContentView: View {
     }
 }
 
-/// iPhone Duo partly folded, around 90°: the map fills the screen and the list sits in a glass panel on one side
-/// of the fold, as the side panel does, so nothing straddles the fold:
-/// - book pose (fold down the screen): the list takes the leading half, the map shows in the trailing one;
-/// - laptop pose (fold across the screen): the map stands up above the fold, the list lies below it, within reach.
-private struct FoldedLayout: View {
+/// Regular width from iOS 27.1: the list over the map in an overlay arrangement. The system sizes and places the
+/// panel, and lays the two side by side, away from the hinge, when an iPhone Duo is partly folded (book or tent).
+@available(iOS 27.1, *)
+private struct ArrangedLayout: View {
     @Bindable var model: StationsModel
     @Binding var camera: MapCameraPosition
-    let fold: CGRect
-    let size: CGSize
-
-    /// Clear space kept on each side of the hinge band, and around the panel.
-    private static let gap: CGFloat = 12
 
     var body: some View {
-        let stacked = fold.width >= fold.height
-        ZStack(alignment: stacked ? .bottom : .leading) {
-            // Stations framed in the half the list leaves free.
-            StationMap(model: model, camera: $camera)
-                .safeAreaPadding(stacked ? .bottom : .leading, stacked ? size.height - fold.minY + Self.gap : fold.maxX + Self.gap)
-                .ignoresSafeArea()
-
+        ArrangementView {
             StationBrowser(model: model)
-                .frame(
-                    width: stacked ? nil : max(0, fold.minX - Self.gap * 2),
-                    height: stacked ? max(0, size.height - fold.maxY - Self.gap * 2) : nil
-                )
-                .frame(maxWidth: stacked ? .infinity : nil, maxHeight: stacked ? nil : .infinity)
-                .modifier(PanelBackground())
-                .padding(Self.gap)
+                .overlayArrangementEdge(.leading)
+        } secondary: {
+            StationMap(model: model, camera: $camera)
+                .ignoresSafeArea()
         }
-        .animation(.smooth, value: fold)
+        .arrangementViewStyle(.overlay)
     }
 }
 
@@ -139,19 +119,6 @@ private struct FuelButton: View {
         } label: {
             Label(Format.fuels(model.fuels), systemImage: "fuelpump")
         }
-    }
-}
-
-/// The fold of an iPhone Duo (iOS 27.1 reserved regions), only while it is partly folded: the division region is
-/// inactive, and not returned, when the device is closed or open flat.
-private enum Fold {
-    static func band(in proxy: GeometryProxy) -> CGRect? {
-        #if !targetEnvironment(macCatalyst)
-        if #available(iOS 27.1, *) {
-            return proxy.reservedRegions(kind: .division).first?.frame
-        }
-        #endif
-        return nil
     }
 }
 
