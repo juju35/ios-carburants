@@ -9,7 +9,7 @@
 # Needs Xcode, XcodeGen and Python 3 with Pillow (pip install pillow). The iPhone Duo ones also need the iOS 27.1
 # simulator runtime (xcodebuild -downloadPlatform iOS) and duoctl, which folds the simulator
 # (github.com/skarol/duoctl); without them they are skipped. The Screenshots workflow runs it.
-set -euo pipefail
+set -Eeuo pipefail
 cd "$(dirname "$0")/.."
 
 # In CI, a failure names its command and the app's latest crash, as annotations (the logs are not always at hand).
