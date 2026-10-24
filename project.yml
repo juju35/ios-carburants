@@ -43,13 +43,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: me.jstephan.carburants
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-    entitlements:
-      path: Carburants/Carburants.entitlements
-      properties:
-        # CarPlay Fueling category: request it from Apple (developer.apple.com/carplay) before running on a device.
-        com.apple.developer.carplay-fueling: true
-        com.apple.security.application-groups:
-          - group.me.jstephan.carburants
+        # Config/Carburants.entitlements (App Group) by default, Config/CarburantsCarPlay.entitlements once Apple
+        # has granted the CarPlay Fueling entitlement: see Config/Base.xcconfig.
+        CODE_SIGN_ENTITLEMENTS: $(CARBURANTS_ENTITLEMENTS)
     info:
       path: Carburants/Info.plist
       properties:

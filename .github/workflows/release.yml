@@ -98,6 +98,7 @@ jobs:
           xcodebuild archive -project Carburants.xcodeproj -scheme Carburants -configuration Release \
             -destination 'generic/platform=iOS' -archivePath build/Carburants.xcarchive \
             DEVELOPMENT_TEAM="$TEAM_ID" CURRENT_PROJECT_VERSION="${{ steps.version.outputs.build }}" \
+            CARBURANTS_ENTITLEMENTS="Config/${{ vars.CARPLAY_FUELING == 'true' && 'CarburantsCarPlay' || 'Carburants' }}.entitlements" \
             "${auth[@]}" | xcbeautify --renderer github-actions
 
           /usr/libexec/PlistBuddy -c "Clear dict" \

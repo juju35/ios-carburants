@@ -1,5 +1,11 @@
-// Shared by Debug and Release. Your Apple developer team goes in Local.xcconfig (ignored by Git):
+// Shared by Debug and Release. Local settings go in Local.xcconfig (ignored by Git):
 //
 //     DEVELOPMENT_TEAM = ABCDE12345
 //
+//     // Once Apple has granted CarPlay Fueling and it is enabled on the App ID:
+//     CARBURANTS_ENTITLEMENTS = Config/CarburantsCarPlay.entitlements
+//
+// Without the CarPlay entitlement the app builds, runs and signs on any device; only the CarPlay scene is missing.
+CARBURANTS_ENTITLEMENTS = Config/Carburants.entitlements
+
 #include? "Local.xcconfig"

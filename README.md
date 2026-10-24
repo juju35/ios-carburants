@@ -92,10 +92,13 @@ Run the *Carburants* scheme on a simulator or a device. Re-run `xcodegen` after 
 The App Group `group.me.jstephan.carburants` must be registered for both bundle IDs (Xcode does it with automatic
 signing).
 
-**CarPlay**: in the simulator, *I/O › External Displays › CarPlay*. On a device, the
-`com.apple.developer.carplay-fueling` entitlement must first be granted by Apple
-([CarPlay request form](https://developer.apple.com/contact/carplay/)), then enabled on the App ID; until then,
-remove it from `project.yml` to run on a device without CarPlay.
+**CarPlay**: the `com.apple.developer.carplay-fueling` entitlement is granted by Apple on request
+([CarPlay request form](https://developer.apple.com/contact/carplay/)); without it, Xcode cannot create a provisioning
+profile that includes it. So the app is signed by default with `Config/Carburants.entitlements` (App Group only):
+it runs on any device, without the CarPlay scene. Once Apple has granted it and it is enabled on the App ID, add
+`CARBURANTS_ENTITLEMENTS = Config/CarburantsCarPlay.entitlements` to `Config/Local.xcconfig` (and set the
+`CARPLAY_FUELING` repository variable to `true` for the Release workflow). In the simulator, CarPlay works either way:
+*I/O › External Displays › CarPlay*.
 
 **iPhone Duo / iPad**: the layout follows the horizontal size class — sheet when compact (closed, Split View),
 side panel when regular (open flat, full screen). **Partly folded** (around 90°), the app reads the fold from the
@@ -148,8 +151,8 @@ gh variable set APPLE_TEAM_ID --body ABCDE12345
 ```
 
 Each new version is then archived, signed and uploaded; it shows in TestFlight once Apple has processed it.
-The App ID needs the CarPlay Fueling capability, which Apple grants on request: until then, signing fails on
-that entitlement (the GitHub release is published before the upload, so it is not affected).
+Builds go out without CarPlay until the `CARPLAY_FUELING` variable is `true` (`gh variable set CARPLAY_FUELING --body
+true`, once Apple has granted the entitlement).
 
 ## Privacy
 
