@@ -1,3 +1,4 @@
+// swiftlint:disable:next unused_import - also reached through another import, kept explicit for Swift 6
 import CoreLocation
 import Foundation
 

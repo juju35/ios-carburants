@@ -79,7 +79,7 @@ side panel when regular (unfolded, full screen).
 | Workflow | What |
 | --- | --- |
 | Lint | pre-commit (whitespace, YAML/JSON, Ruff for `scripts/`, jscpd duplication), SwiftLint `--strict` with annotations on pull requests |
-| Build | On the `xcode-27` runner with Xcode 27.1: XcodeGen, simulator build of the app and its widget (no signing), CarburantsKit tests; unused declarations and imports (SwiftLint analyzer) as annotations, not blocking yet |
+| Build | On the `xcode-27` runner with Xcode 27.1: XcodeGen, simulator build of the app and its widget (no signing), CarburantsKit tests; unused declarations and imports (SwiftLint analyzer), blocking, as annotations |
 | Clean up merged branches | Deletes merged branches after each pull request and weekly |
 | Stale | Marks and closes inactive issues and pull requests |
 

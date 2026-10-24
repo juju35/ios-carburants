@@ -50,8 +50,6 @@ jobs:
             CODE_SIGNING_ALLOWED=NO | tee "$RUNNER_TEMP/build.log" | xcbeautify --renderer github-actions
 
       - name: Dead code
-        # Reports only for now: findings are annotations, the job stays green.
-        continue-on-error: true
         env:
           REPORTER: github-actions-logging
         run: scripts/dead-code.sh "$RUNNER_TEMP/build.log"

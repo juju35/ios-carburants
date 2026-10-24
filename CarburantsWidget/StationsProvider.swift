@@ -25,6 +25,7 @@ enum WidgetFuel: String, AppEnum {
 
 struct StationsIntent: WidgetConfigurationIntent {
     static let title: LocalizedStringResource = "Stations à proximité"
+    // swiftlint:disable:next unused_declaration - shown by the system in the widget's settings
     static let description = IntentDescription("Les stations les moins chères autour de vous.")
 
     @Parameter(title: "Carburant", default: .mine)
