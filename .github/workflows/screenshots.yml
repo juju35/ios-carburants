@@ -12,6 +12,7 @@ on:
       - scripts/screenshots.sh
       - scripts/screenshots_post.py
       - scripts/screenshots_unchanged.py
+      - .github/workflows/screenshots.yml
   workflow_dispatch:
 
 permissions:
