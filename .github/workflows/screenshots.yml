@@ -14,6 +14,11 @@ on:
       - scripts/screenshots_unchanged.py
       - .github/workflows/screenshots.yml
   workflow_dispatch:
+    inputs:
+      force:
+        description: Commit every new screenshot, even when it barely differs (subtle changes such as Liquid Glass)
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -54,7 +59,9 @@ jobs:
 
       - name: Commit
         run: |
-          python3 scripts/screenshots_unchanged.py appstore/screenshots screenshots
+          if [ "${{ inputs.force }}" != "true" ]; then
+            python3 scripts/screenshots_unchanged.py appstore/screenshots screenshots
+          fi
           git add appstore/screenshots screenshots
           if git diff --cached --quiet; then
             echo "Screenshots unchanged"
