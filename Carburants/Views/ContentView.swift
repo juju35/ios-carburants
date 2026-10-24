@@ -126,9 +126,12 @@ private struct FuelButton: View {
 private struct PanelBackground: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
         if #available(iOS 26, *) {
-            content.glassEffect(.regular, in: shape)
+            // Clipped too: the list's rows and bars stay inside the glass's rounded corners.
+            content
+                .clipShape(shape)
+                .glassEffect(.regular, in: shape)
         } else {
             content
                 .background(.regularMaterial, in: shape)
