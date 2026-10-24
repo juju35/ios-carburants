@@ -97,12 +97,11 @@ signing).
 ([CarPlay request form](https://developer.apple.com/contact/carplay/)), then enabled on the App ID; until then,
 remove it from `project.yml` to run on a device without CarPlay.
 
-**iPhone Duo / iPad**: the layout follows the horizontal size class, as Apple's iPhone Duo guidelines ask (no
-per-posture or fixed-width layouts). Compact (cover screen, Split View): map and sheet, the fuel button in the bar,
-which the cover screen moves to its side strip. Regular (inner screen, iPad): from iOS 27.1 an overlay arrangement,
-the list in a panel over the map, which the system lays beside the map, clear of the hinge, when the iPhone Duo is
-partly folded; before 27.1, a side panel. In the Simulator, fold the iPhone Duo with Device Hub's buttons (hold ⌥
-for the angle slider).
+**iPhone Duo / iPad**: the layout follows the horizontal size class — sheet when compact (closed, Split View),
+side panel when regular (open flat, full screen). **Partly folded** (around 90°), the app reads the fold from the
+iOS 27.1 reserved regions and keeps everything off it: map above and list below in the laptop / tabletop pose,
+list and map side by side in the book pose. In the Simulator, fold the iPhone Duo with Device Hub's buttons
+(hold ⌥ for the angle slider).
 
 ## CI
 
