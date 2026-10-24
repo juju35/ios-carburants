@@ -12,6 +12,19 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# In CI, a failure names its command and the app's latest crash, as annotations (the logs are not always at hand).
+on_error() {
+  local status=$? line=$1 command=$2 report
+  [ -n "${GITHUB_ACTIONS:-}" ] || return 0
+  echo "::error title=screenshots.sh::line $line exited with $status: $command"
+  report=$(find "$HOME/Library/Logs/DiagnosticReports" -name 'Carburants*' -newer project.yml 2>/dev/null | tail -1)
+  if [ -n "$report" ]; then
+    summary=$(grep -E '"exception"|"type"|"signal"|"codes"|"symbol"|"termination"|"indicator"' "$report" | head -40)
+    echo "::error title=Carburants crash::${summary//$'\n'/%0A}"
+  fi
+}
+trap 'on_error $LINENO "$BASH_COMMAND"' ERR
+
 IPHONE="${IPHONE:-iPhone 18 Pro Max}"
 IPAD="${IPAD:-iPad Pro 13-inch (M5)}"
 DELAY="${DELAY:-10}"
