@@ -63,10 +63,12 @@ struct ContentView: View {
     /// Flat or closed: the map full screen, the list in the sheet or the side panel.
     private func unfolded(height: CGFloat) -> some View {
         ZStack(alignment: .topLeading) {
-            // The map draws under the bars by itself and keeps its controls and framing inside the safe area,
-            // to which the list's room is added so stations are not framed under it.
+            // The map fills the whole screen, under the status bar wherever it is (on the side on iPhone Duo), and
+            // keeps its controls and framing inside the safe area, to which the list's room is added so stations
+            // are not framed under it.
             StationMap(model: model, camera: $camera)
                 .safeAreaPadding(isRegular ? .leading : .bottom, isRegular ? Self.panelWidth + 24 : height * 0.42)
+                .ignoresSafeArea()
 
             if isRegular {
                 StationBrowser(model: model)
@@ -93,32 +95,33 @@ private struct FoldedLayout: View {
     private static let gap: CGFloat = 12
 
     var body: some View {
-        let stacked = fold.width >= fold.height
-        let first = stacked
-            ? CGRect(x: 0, y: 0, width: size.width, height: max(0, fold.minY - Self.gap))
-            : CGRect(x: 0, y: 0, width: max(0, fold.minX - Self.gap), height: size.height)
-        let second = stacked
-            ? CGRect(x: 0, y: fold.maxY + Self.gap, width: size.width, height: max(0, size.height - fold.maxY - Self.gap))
-            : CGRect(x: fold.maxX + Self.gap, y: 0, width: max(0, size.width - fold.maxX - Self.gap), height: size.height)
-
-        ZStack(alignment: .topLeading) {
-            Color(.systemBackground)
+        // Laid out in stacks, not offsets, so the map can run under the screen's edges and status bar.
+        let room = Self.gap * 2 + (stacked ? fold.height : fold.width)
+        Group {
             if stacked {
-                place(StationMap(model: model, camera: $camera), in: first)
-                place(StationBrowser(model: model), in: second)
+                VStack(spacing: 0) {
+                    map.frame(height: max(0, fold.minY - Self.gap))
+                    Color.clear.frame(height: room)
+                    StationBrowser(model: model)
+                }
             } else {
-                place(StationBrowser(model: model), in: first)
-                place(StationMap(model: model, camera: $camera), in: second)
+                HStack(spacing: 0) {
+                    StationBrowser(model: model).frame(width: max(0, fold.minX - Self.gap))
+                    Color.clear.frame(width: room)
+                    map
+                }
             }
         }
+        .frame(width: size.width, height: size.height)
+        .background(Color(.systemBackground))
         .animation(.smooth, value: fold)
     }
 
-    private func place(_ view: some View, in rect: CGRect) -> some View {
-        view
-            .frame(width: rect.width, height: rect.height)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .offset(x: rect.minX, y: rect.minY)
+    /// Laptop / tabletop pose: the fold runs across the screen.
+    private var stacked: Bool { fold.width >= fold.height }
+
+    private var map: some View {
+        StationMap(model: model, camera: $camera).ignoresSafeArea()
     }
 }
 
