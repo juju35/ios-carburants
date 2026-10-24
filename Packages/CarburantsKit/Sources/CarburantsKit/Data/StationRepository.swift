@@ -40,11 +40,10 @@ public actor StationRepository {
     private var logos: [String: LogoInfo] = [:]
     private var cachesLoaded = false
 
-    private init() {
-        Task { await self.warmUp() }
-    }
+    private init() {}
 
-    /// Starts the downloads (names ~1 MB, brand index) so the first search does not wait for them.
+    /// Starts the downloads (names ~1 MB, brand index) so the first search does not wait for them. App only:
+    /// the widget extension's memory is too tight for them.
     public func warmUp() {
         loadCaches()
         startNamesLoad()
@@ -54,14 +53,16 @@ public actor StationRepository {
     }
 
     /// Nearest stations selling one of `fuels`, within 10 km, widened to 30 km when there are few.
-    public func nearby(latitude: Double, longitude: Double, fuels: [Fuel]) async throws -> SearchResult {
+    /// `withNamesFile: false` names them from the cached OpenStreetMap brands only (widget).
+    public func nearby(latitude: Double, longitude: Double, fuels: [Fuel], withNamesFile: Bool = true) async throws -> SearchResult {
         var radius = Self.radiusKm
         var list = try await CarburantsAPI.nearby(latitude: latitude, longitude: longitude, radiusKm: radius, fuels: fuels)
         if list.filter({ $0.sellsAny(fuels) }).count < Self.minResults {
             radius = Self.wideRadiusKm
             list = try await CarburantsAPI.nearby(latitude: latitude, longitude: longitude, radiusKm: radius, fuels: fuels)
         }
-        let names = await currentNames()
+        var names: [String: StationNames.Entry] = [:]
+        if withNamesFile { names = await currentNames() }
         loadCaches()
         return SearchResult(stations: list.filter { $0.sellsAny(fuels) }.map { decorate($0, names) }, radiusKm: radius)
     }

@@ -100,7 +100,7 @@ public enum CarburantsAPI {
     private static func parseHours(_ raw: Any?) -> [DayHours] {
         guard let hours = jsonValue(raw) as? [String: Any] else { return [] }
         return objects(hours["jour"]).compactMap { day -> DayHours? in
-            guard let number = string(day["@id"]).flatMap({ Int($0) }) else { return nil }
+            guard let number = string(day["@id"]).flatMap({ Int($0) }), (1...7).contains(number) else { return nil }
             let ranges = objects(day["horaire"]).compactMap { range -> TimeRange? in
                 let open = (string(range["@ouverture"]) ?? "").replacingOccurrences(of: ".", with: ":")
                 let close = (string(range["@fermeture"]) ?? "").replacingOccurrences(of: ".", with: ":")

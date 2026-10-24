@@ -14,7 +14,7 @@ public enum Format {
 
     /// "850 m", "3,4 km", "12 km".
     public static func distance(_ km: Double) -> String {
-        if km < 1 { return "\(Int((km * 100).rounded()) * 10) m" }
+        if km < 0.995 { return "\(Int((km * 100).rounded()) * 10) m" }
         if km < 10 { return "\(km.formatted(.number.precision(.fractionLength(1)).locale(french))) km" }
         return "\(Int(km.rounded())) km"
     }
@@ -75,7 +75,12 @@ public struct Opening: Hashable, Sendable {
         if alwaysOpen(hours) { return Opening(state: .always, text: "Ouvert 24h/24") }
 
         let today = hours.first { $0.day == day && !$0.closed }
-        if let range = today?.ranges.first(where: { current >= minutes($0.open) && current < minutes($0.close) }) {
+        if let range = today?.ranges.first(where: { contains($0, current) }) {
+            return Opening(state: .open, text: "Ouvert · ferme à \(range.close)")
+        }
+        // After midnight, in yesterday's range that ends today (06:00–01:00).
+        let yesterday = hours.first { $0.day == (day + 5) % 7 + 1 && !$0.closed }
+        if let range = yesterday?.ranges.first(where: { minutes($0.close) < minutes($0.open) && current < minutes($0.close) }) {
             return Opening(state: .open, text: "Ouvert · ferme à \(range.close)")
         }
         if station.automate24 { return Opening(state: .automate, text: "Automate 24h/24") }
@@ -88,6 +93,13 @@ public struct Opening: Hashable, Sendable {
         hours.count == 7 && hours.allSatisfy { day in
             !day.closed && day.ranges.contains { $0.open == "00:00" && minutes($0.close) >= 23 * 60 + 59 }
         }
+    }
+
+    /// In the range today; one ending after midnight (close before open) runs to the end of the day.
+    private static func contains(_ range: TimeRange, _ current: Int) -> Bool {
+        let open = minutes(range.open)
+        let close = minutes(range.close)
+        return close > open ? current >= open && current < close : current >= open
     }
 
     static func minutes(_ hhmm: String) -> Int {

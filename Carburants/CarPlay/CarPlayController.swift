@@ -58,10 +58,10 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         _ = LogoStore.shared.revision
 
         let points = stations.prefix(Self.maxPoints).map { point($0) }
-        mapTemplate.setPointsOfInterest(Array(points), selectedIndex: NSNotFound)
+        mapTemplate.setPointsOfInterest(points, selectedIndex: NSNotFound)
 
         let items = stations.prefix(CPListTemplate.maximumItemCount).map { listItem($0) }
-        listTemplate.updateSections([CPListSection(items: Array(items))])
+        listTemplate.updateSections([CPListSection(items: items)])
         listTemplate.emptyViewTitleVariants = [emptyTitle]
         listTemplate.emptyViewSubtitleVariants = [emptySubtitle]
         let sort = CPBarButton(title: model.sort == .price ? "Prix" : "Distance") { [weak self] _ in

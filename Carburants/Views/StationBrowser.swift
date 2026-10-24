@@ -25,6 +25,10 @@ struct StationBrowser: View {
         .sheet(isPresented: $showsFuelPicker) {
             FuelPickerView(selection: model.fuels) { model.setFuels($0) }
         }
+        .onAppear {
+            // Opened from a widget before this view existed.
+            if let id = model.selectedID { path = [id] }
+        }
         .onChange(of: model.selectedID) { _, id in
             if let id, path.last != id { path = [id] }
         }
@@ -126,8 +130,8 @@ struct StationBrowser: View {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Picker("Trier par", selection: Binding(get: { model.sort }, set: { model.setSort($0) })) {
-                    Label("Prix", systemImage: "eurosign").tag(SortOrder.price)
-                    Label("Distance", systemImage: "location").tag(SortOrder.distance)
+                    Label("Prix", systemImage: "eurosign").tag(StationOrder.price)
+                    Label("Distance", systemImage: "location").tag(StationOrder.distance)
                 }
             } label: {
                 Label("Trier", systemImage: "arrow.up.arrow.down")

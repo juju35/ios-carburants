@@ -85,10 +85,13 @@ private struct SmallWidget: View {
             Text(station.name)
                 .font(.footnote.weight(.semibold))
                 .lineLimit(1)
-            Text([station.distanceKm.map(Format.distance), Format.ago(entry.updated)].compactMap { $0 }.joined(separator: " · "))
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+            HStack(spacing: 3) {
+                if let distance = station.distanceKm { Text("\(Format.distance(distance)) ·") }
+                Text(entry.updated, style: .relative)
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
         }
         .widgetURL(stationURL(station))
     }
@@ -107,7 +110,7 @@ private struct ListWidget: View {
                 Image(systemName: "fuelpump.fill")
                 Text(entry.fuels.count == 1 ? "\(entry.fuels[0].label) à proximité" : "À proximité")
                 Spacer()
-                Text(Format.ago(entry.updated))
+                Text(entry.updated, style: .relative)
             }
             .font(.caption.weight(.semibold))
             .foregroundStyle(.secondary)
@@ -201,7 +204,7 @@ private struct CircularWidget: View {
             VStack(spacing: 0) {
                 Image(systemName: "fuelpump.fill").font(.caption2)
                 if let best = station.best(entry.fuels) {
-                    // "1,74": the third decimal does not fit.
+                    // "1,75": the third decimal does not fit.
                     Text(best.price.formatted(.number.precision(.fractionLength(2)).locale(Locale(identifier: "fr_FR"))))
                         .font(.system(.body, design: .rounded).weight(.semibold))
                         .minimumScaleFactor(0.6)

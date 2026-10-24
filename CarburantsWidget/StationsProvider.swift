@@ -73,11 +73,22 @@ struct StationsProvider: AppIntentTimelineProvider {
             return StationsEntry(date: .now, fuels: fuels, stations: [], state: .noLocation, updated: .now)
         }
         do {
+            // The names file is too big for the extension's memory: names, brands and logos the app found instead.
             let result = try await StationRepository.shared.nearby(
-                latitude: location.latitude, longitude: location.longitude, fuels: fuels
+                latitude: location.latitude, longitude: location.longitude, fuels: fuels, withNamesFile: false
             )
-            let stations = Array(StationSort.sorted(result.stations, by: .price, fuels: fuels).prefix(Self.maxStations))
+            let known = Dictionary((Snapshot.load()?.stations ?? []).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            let named = result.stations.map { station in
+                guard let app = known[station.id] else { return station }
+                var station = station
+                station.name = app.name
+                station.brand = app.brand
+                station.logoURL = app.logoURL ?? station.logoURL
+                return station
+            }
+            let stations = Array(StationSort.sorted(named, by: .price, fuels: fuels).prefix(Self.maxStations))
             await LogoStore.shared.preload(stations)
+            WidgetStations.save(stations)
             return StationsEntry(date: .now, fuels: fuels, stations: stations, state: .ready, updated: .now)
         } catch {
             // Offline: the app's last list when it was for these fuels.

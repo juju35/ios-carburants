@@ -184,7 +184,7 @@ public struct Station: Codable, Hashable, Identifiable, Sendable {
     public var prettyAddress: String { TextCase.address(address) }
 }
 
-public enum SortOrder: String, Codable, CaseIterable, Sendable {
+public enum StationOrder: String, Codable, CaseIterable, Sendable {
     case price, distance
 
     public var label: String { self == .price ? "Prix" : "Distance" }
@@ -192,7 +192,7 @@ public enum SortOrder: String, Codable, CaseIterable, Sendable {
 
 public enum StationSort {
     /// Cheapest of the chosen fuels first (shortages last, nearest first), or nearest first.
-    public static func sorted(_ list: [Station], by order: SortOrder, fuels: [Fuel]) -> [Station] {
+    public static func sorted(_ list: [Station], by order: StationOrder, fuels: [Fuel]) -> [Station] {
         let distance: (Station) -> Double = { $0.distanceKm ?? .greatestFiniteMagnitude }
         switch order {
         case .distance:

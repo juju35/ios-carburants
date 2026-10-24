@@ -17,7 +17,7 @@ final class StationsModel {
     let location = LocationProvider()
 
     private(set) var fuels: [Fuel]
-    private(set) var sort: SortOrder
+    private(set) var sort: StationOrder
     /// nil until a first search returns.
     private(set) var stations: [Station]?
     private(set) var radiusKm = StationRepository.radiusKm
@@ -55,7 +55,8 @@ final class StationsModel {
 
     func station(_ id: Station.ID?) -> Station? {
         guard let id else { return nil }
-        return stations?.first { $0.id == id }
+        // A widget set to another fuel links stations the list may not have: its own copy then.
+        return stations?.first { $0.id == id } ?? WidgetStations.load().first { $0.id == id }
     }
 
     func isCheapest(_ station: Station) -> Bool {
@@ -89,7 +90,7 @@ final class StationsModel {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    func setSort(_ newValue: SortOrder) {
+    func setSort(_ newValue: StationOrder) {
         guard newValue != sort else { return }
         sort = newValue
         preferences.sort = newValue

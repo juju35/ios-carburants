@@ -28,8 +28,8 @@ public final class Preferences: @unchecked Sendable {
         set { store.set(newValue.map(\.key), forKey: "fuels") }
     }
 
-    public var sort: SortOrder {
-        get { store.string(forKey: "sort").flatMap(SortOrder.init(rawValue:)) ?? .price }
+    public var sort: StationOrder {
+        get { store.string(forKey: "sort").flatMap(StationOrder.init(rawValue:)) ?? .price }
         set { store.set(newValue.rawValue, forKey: "sort") }
     }
 
@@ -38,6 +38,13 @@ public final class Preferences: @unchecked Sendable {
         get { store.data(forKey: "lastLocation").flatMap { try? JSONDecoder().decode(SavedLocation.self, from: $0) } }
         set { store.set(newValue.flatMap { try? JSONEncoder().encode($0) }, forKey: "lastLocation") }
     }
+}
+
+/// The stations the widgets show last, for their links into the app.
+public enum WidgetStations {
+    public static func load() -> [Station] { SharedStorage.readJSON([Station].self, from: "widget_stations.json") ?? [] }
+
+    public static func save(_ stations: [Station]) { SharedStorage.writeJSON(stations, to: "widget_stations.json") }
 }
 
 /// The last list found, so the app and the widget have something to show at once.
