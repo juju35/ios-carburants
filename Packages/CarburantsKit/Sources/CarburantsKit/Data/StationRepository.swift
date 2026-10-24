@@ -134,7 +134,7 @@ public actor StationRepository {
         }
         guard !todo.isEmpty, let found = try? await WikidataLogos.urls(Set(todo)) else { return }
         for qid in todo {
-            logos[qid] = LogoInfo(url: found[qid] ?? nil, checkedAt: now)
+            logos[qid] = LogoInfo(url: found[qid].flatMap { $0 }, checkedAt: now)
         }
         SharedStorage.writeJSON(logos, to: "logos.json")
     }

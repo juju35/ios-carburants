@@ -59,15 +59,12 @@ public struct StationLogo: View {
 
     public var body: some View {
         let store = LogoStore.shared
-        let _ = store.revision // Redraw when downloaded logos arrive.
         let shape = RoundedRectangle(cornerRadius: size * 0.225, style: .continuous)
         ZStack {
             switch store.artwork(for: station) {
             case let .logo(image, dark):
                 (dark ? Color(rgb: 0x202124) : Color.white)
-                accented(Image(uiImage: image))
-                    .resizable()
-                    .interpolation(.high)
+                logo(image)
                     .scaledToFit()
                     .padding(size * 0.12)
             case let .initials(text):
@@ -86,14 +83,21 @@ public struct StationLogo: View {
         .frame(width: size, height: size)
         .clipShape(shape)
         .overlay(shape.strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.5))
+        // Redraw when downloaded logos arrive.
+        .id(store.revision)
         .accessibilityHidden(true)
     }
 
     /// In a widget shown tinted or clear (Home Screen, CarPlay), the logo follows the tint instead of
     /// staying in colour.
-    private func accented(_ image: Image) -> Image {
-        if #available(iOS 18, *) { return image.widgetAccentedRenderingMode(.accentedDesaturated) }
-        return image
+    @ViewBuilder
+    private func logo(_ uiImage: UIImage) -> some View {
+        let image = Image(uiImage: uiImage).resizable().interpolation(.high)
+        if #available(iOS 18, *) {
+            image.widgetAccentedRenderingMode(.accentedDesaturated)
+        } else {
+            image
+        }
     }
 
     // Grey gradient, as Contacts draws a contact without a photo.
