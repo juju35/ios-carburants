@@ -1,0 +1,113 @@
+import Foundation
+
+/// Texts in French, like the feed and the rest of the app.
+public enum Format {
+    private static let french = Locale(identifier: "fr_FR")
+
+    /// "1,749"
+    public static func priceNumber(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(3)).locale(french))
+    }
+
+    /// "1,749 €"
+    public static func price(_ value: Double) -> String { "\(priceNumber(value)) €" }
+
+    /// "850 m", "3,4 km", "12 km".
+    public static func distance(_ km: Double) -> String {
+        if km < 1 { return "\(Int((km * 100).rounded()) * 10) m" }
+        if km < 10 { return "\(km.formatted(.number.precision(.fractionLength(1)).locale(french))) km" }
+        return "\(Int(km.rounded())) km"
+    }
+
+    /// "12 min", "3 h", "2 j" since `date`; nil under a minute. A station clock ahead of time counts as now.
+    private static func elapsed(_ date: Date, now: Date) -> String? {
+        let minutes = max(0, Int(now.timeIntervalSince(date) / 60))
+        switch minutes {
+        case ..<1: return nil
+        case ..<60: return "\(minutes) min"
+        case ..<(48 * 60): return "\(minutes / 60) h"
+        default: return "\(minutes / (24 * 60)) j"
+        }
+    }
+
+    /// "il y a 12 min", "à l'instant".
+    public static func ago(_ date: Date, now: Date = .now) -> String {
+        elapsed(date, now: now).map { "il y a \($0)" } ?? "à l’instant"
+    }
+
+    /// "12 min", at least "1 min".
+    public static func since(_ date: Date, now: Date = .now) -> String { elapsed(date, now: now) ?? "1 min" }
+
+    /// "Gazole", "E10, SP98", "3 carburants".
+    public static func fuels(_ fuels: [Fuel]) -> String {
+        switch fuels.count {
+        case 1: fuels[0].label
+        case 2: fuels.map(\.short).joined(separator: ", ")
+        default: "\(fuels.count) carburants"
+        }
+    }
+}
+
+/// Opening status, as carbOpening() in the Lovelace card. Stations are in France: their hours are read in
+/// French time, whatever the phone's time zone.
+public struct Opening: Hashable, Sendable {
+    public enum State: Sendable { case open, closed, always, automate }
+
+    public let state: State
+    public let text: String
+
+    private static let zone = TimeZone(identifier: "Europe/Paris")!
+    public static let dayNames = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
+    private static let shortDayNames = ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."]
+
+    /// 1 = Monday … 7 = Sunday, and minutes since midnight, in French time.
+    public static func now(_ date: Date = .now) -> (day: Int, minutes: Int) {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        let parts = calendar.dateComponents([.weekday, .hour, .minute], from: date)
+        let day = ((parts.weekday ?? 2) + 5) % 7 + 1
+        return (day, (parts.hour ?? 0) * 60 + (parts.minute ?? 0))
+    }
+
+    public static func of(_ station: Station, at date: Date = .now) -> Opening? {
+        let hours = station.hours
+        let (day, current) = now(date)
+        if alwaysOpen(hours) { return Opening(state: .always, text: "Ouvert 24h/24") }
+
+        let today = hours.first { $0.day == day && !$0.closed }
+        if let range = today?.ranges.first(where: { current >= minutes($0.open) && current < minutes($0.close) }) {
+            return Opening(state: .open, text: "Ouvert · ferme à \(range.close)")
+        }
+        if station.automate24 { return Opening(state: .automate, text: "Automate 24h/24") }
+        if hours.isEmpty { return nil }
+        return Opening(state: .closed, text: nextOpening(hours, today: today, day: day, current: current))
+    }
+
+    /// Open every day from 00:00 to 23:59 or later.
+    public static func alwaysOpen(_ hours: [DayHours]) -> Bool {
+        hours.count == 7 && hours.allSatisfy { day in
+            !day.closed && day.ranges.contains { $0.open == "00:00" && minutes($0.close) >= 23 * 60 + 59 }
+        }
+    }
+
+    static func minutes(_ hhmm: String) -> Int {
+        let parts = hhmm.split(separator: ":")
+        let hours = parts.first.flatMap { Int($0) } ?? 0
+        let mins = parts.dropFirst().first.flatMap { Int($0) } ?? 0
+        return hours * 60 + mins
+    }
+
+    /// "Fermé · ouvre à 14:00" later today, else on the next open day.
+    private static func nextOpening(_ hours: [DayHours], today: DayHours?, day: Int, current: Int) -> String {
+        if let range = today?.ranges.first(where: { minutes($0.open) > current }) {
+            return "Fermé · ouvre à \(range.open)"
+        }
+        for offset in 1...7 {
+            let target = (day - 1 + offset) % 7 + 1
+            guard let next = hours.first(where: { $0.day == target }), !next.closed, let first = next.ranges.first else { continue }
+            if offset == 1 { return "Fermé · ouvre demain à \(first.open)" }
+            return "Fermé · ouvre \(shortDayNames[target - 1]) à \(first.open)"
+        }
+        return "Fermé"
+    }
+}

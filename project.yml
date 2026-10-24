@@ -1,0 +1,121 @@
+# XcodeGen spec: `brew install xcodegen && xcodegen` writes Carburants.xcodeproj (not committed),
+# with the Info.plist and entitlements files described below.
+name: Carburants
+
+options:
+  bundleIdPrefix: me.jstephan
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  developmentLanguage: fr
+
+# Signing team: Config/Local.xcconfig (not committed), see Config/Base.xcconfig.
+configFiles:
+  Debug: Config/Base.xcconfig
+  Release: Config/Base.xcconfig
+
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    # iPhone (iPhone Duo included) and iPad.
+    TARGETED_DEVICE_FAMILY: "1,2"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+
+packages:
+  CarburantsKit:
+    path: Packages/CarburantsKit
+
+targets:
+  Carburants:
+    type: application
+    platform: iOS
+    sources:
+      - path: Carburants
+    dependencies:
+      - package: CarburantsKit
+      - target: CarburantsWidget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: me.jstephan.carburants
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    entitlements:
+      path: Carburants/Carburants.entitlements
+      properties:
+        # CarPlay Fueling category: request it from Apple (developer.apple.com/carplay) before running on a device.
+        com.apple.developer.carplay-fueling: true
+        com.apple.security.application-groups:
+          - group.me.jstephan.carburants
+    info:
+      path: Carburants/Info.plist
+      properties:
+        CFBundleDisplayName: Carburants
+        LSApplicationCategoryType: public.app-category.navigation
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen: {}
+        NSLocationWhenInUseUsageDescription: Carburants utilise votre position pour trouver les stations-service les plus proches et leurs prix.
+        LSApplicationQueriesSchemes:
+          - comgooglemaps
+          - waze
+        CFBundleURLTypes:
+          - CFBundleURLName: me.jstephan.carburants
+            CFBundleURLSchemes:
+              - carburants
+        UIApplicationSceneManifest:
+          # Split View on iPhone Duo and iPad: several windows on one model.
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations:
+            CPTemplateApplicationSceneSessionRoleApplication:
+              - UISceneClassName: CPTemplateApplicationScene
+                UISceneConfigurationName: CarPlay
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).CarPlaySceneDelegate
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+
+  CarburantsWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: CarburantsWidget
+    dependencies:
+      - package: CarburantsKit
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: me.jstephan.carburants.widget
+    entitlements:
+      path: CarburantsWidget/CarburantsWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.me.jstephan.carburants
+    info:
+      path: CarburantsWidget/Info.plist
+      properties:
+        CFBundleDisplayName: Carburants
+        NSWidgetWantsLocation: true
+        NSLocationWhenInUseUsageDescription: Carburants utilise votre position pour trouver les stations-service les plus proches et leurs prix.
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+schemes:
+  Carburants:
+    build:
+      targets:
+        Carburants: all
+        CarburantsWidget: all
+    run:
+      config: Debug
+    archive:
+      config: Release

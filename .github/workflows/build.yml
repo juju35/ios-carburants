@@ -1,0 +1,64 @@
+name: Build
+
+# Generates the Xcode project, builds the app with its widget for the simulator (no signing) and runs
+# CarburantsKit's tests. Periphery lists unused code as annotations.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Generate the project
+        run: |
+          brew install xcodegen xcbeautify
+          xcodegen
+
+      - name: Pick a simulator
+        id: sim
+        run: |
+          id=$(xcrun simctl list devices available -j \
+            | jq -r '[.devices | to_entries[] | select(.key | test("iOS")) | .value[] | select(.name | startswith("iPhone"))][0].udid')
+          test -n "$id" && test "$id" != null
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+      - name: Build the app
+        run: |
+          set -o pipefail
+          xcodebuild build -project Carburants.xcodeproj -scheme Carburants \
+            -destination "id=${{ steps.sim.outputs.id }}" \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify --renderer github-actions
+
+      - name: Test CarburantsKit
+        working-directory: Packages/CarburantsKit
+        run: |
+          set -o pipefail
+          xcodebuild test -scheme CarburantsKit -destination "id=${{ steps.sim.outputs.id }}" \
+            | xcbeautify --renderer github-actions
+
+  dead-code:
+    name: Dead code (Periphery)
+    runs-on: macos-latest
+    # Reports only until a baseline is recorded (periphery scan --write-baseline).
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - run: brew install xcodegen periphery && xcodegen
+      - run: >
+          periphery scan --project Carburants.xcodeproj --schemes Carburants
+          --retain-swift-ui-previews --retain-codable-properties --format github-actions
+          -- -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO

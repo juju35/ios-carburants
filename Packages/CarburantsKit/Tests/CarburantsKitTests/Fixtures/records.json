@@ -1,0 +1,35 @@
+{
+  "total_count": 2,
+  "results": [
+    {
+      "id": 35000001,
+      "latitude": "4810460",
+      "longitude": "-172400",
+      "cp": "35000",
+      "pop": "R",
+      "adresse": "ROUTE DE LORIENT",
+      "ville": "RENNES",
+      "horaires": "{\"@automate-24-24\": \"1\", \"jour\": [{\"@id\": \"1\", \"@nom\": \"Lundi\", \"@ferme\": \"\", \"horaire\": {\"@ouverture\": \"07.00\", \"@fermeture\": \"21.00\"}}, {\"@id\": \"7\", \"@nom\": \"Dimanche\", \"@ferme\": \"1\"}]}",
+      "services_service": ["Boutique alimentaire", "Gonflage"],
+      "gazole_prix": 1.6894,
+      "gazole_maj": "2026-10-20T18:05:00+02:00",
+      "e10_prix": null,
+      "e10_rupture_type": "temporaire",
+      "e10_rupture_debut": "2026-10-19 08:00:00",
+      "sp98_prix": 1.819,
+      "sp98_maj": "2026-10-20 16:05:00",
+      "rupture": "[{\"@id\": \"6\", \"@nom\": \"E85\", \"@debut\": \"2026-10-01 10:00:00\", \"@fin\": \"2026-10-18 10:00:00\"}]",
+      "horaires_automate_24_24": "Oui",
+      "geom": {"lon": -1.724, "lat": 48.1046}
+    },
+    {
+      "id": "35700002",
+      "cp": "35700",
+      "pop": "A",
+      "adresse": "Aire de service",
+      "ville": "Rennes",
+      "gplc_rupture_type": "definitive",
+      "geom": {"lon": -1.65, "lat": 48.12}
+    }
+  ]
+}

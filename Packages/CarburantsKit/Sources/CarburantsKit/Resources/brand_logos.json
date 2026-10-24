@@ -1,0 +1,272 @@
+{
+  "_comment": "Brand logos shipped with the app (drawable-nodpi), read by data/BrandLogos.kt and scripts/screenshots.py. keys: brand names as BrandIndex.key() writes them; a key matches the whole name, or its start when 4 letters or more; the longest match wins. dark: white logo, drawn on a dark tile.",
+  "brands": [
+    {
+      "keys": [
+        "totalaccess",
+        "totalenergiesaccess"
+      ],
+      "logo": "brand_total_access"
+    },
+    {
+      "keys": [
+        "8ahuit",
+        "8a8",
+        "huitahuit"
+      ],
+      "logo": "brand_8_a_huit"
+    },
+    {
+      "keys": [
+        "avia"
+      ],
+      "logo": "brand_avia"
+    },
+    {
+      "keys": [
+        "agip"
+      ],
+      "logo": "brand_agip"
+    },
+    {
+      "keys": [
+        "aldi"
+      ],
+      "logo": "brand_aldi_nord"
+    },
+    {
+      "keys": [
+        "atac"
+      ],
+      "logo": "brand_atac"
+    },
+    {
+      "keys": [
+        "auchan"
+      ],
+      "logo": "brand_auchan"
+    },
+    {
+      "keys": [
+        "bp"
+      ],
+      "logo": "brand_bp"
+    },
+    {
+      "keys": [
+        "bricomarche"
+      ],
+      "logo": "brand_bricomarche"
+    },
+    {
+      "keys": [
+        "carrefour"
+      ],
+      "logo": "brand_carrefour"
+    },
+    {
+      "keys": [
+        "casino",
+        "petitcasino"
+      ],
+      "logo": "brand_casino"
+    },
+    {
+      "keys": [
+        "colruyt"
+      ],
+      "logo": "brand_colruyt"
+    },
+    {
+      "keys": [
+        "cora"
+      ],
+      "logo": "brand_cora"
+    },
+    {
+      "keys": [
+        "costco"
+      ],
+      "logo": "brand_costco"
+    },
+    {
+      "keys": [
+        "dyneff"
+      ],
+      "logo": "brand_dyneff"
+    },
+    {
+      "keys": [
+        "elan"
+      ],
+      "logo": "brand_elan"
+    },
+    {
+      "keys": [
+        "elf"
+      ],
+      "logo": "brand_elf"
+    },
+    {
+      "keys": [
+        "eni"
+      ],
+      "logo": "brand_eni"
+    },
+    {
+      "keys": [
+        "esso"
+      ],
+      "logo": "brand_esso"
+    },
+    {
+      "keys": [
+        "fulli"
+      ],
+      "logo": "brand_fulli"
+    },
+    {
+      "keys": [
+        "g20"
+      ],
+      "logo": "brand_g20"
+    },
+    {
+      "keys": [
+        "geantcasino",
+        "geant"
+      ],
+      "logo": "brand_geant_casino"
+    },
+    {
+      "keys": [
+        "gulf"
+      ],
+      "logo": "brand_gulf"
+    },
+    {
+      "keys": [
+        "hyperu",
+        "superu",
+        "uexpress",
+        "systemeu",
+        "marcheu",
+        "utile",
+        "u"
+      ],
+      "logo": "brand_hyper_u"
+    },
+    {
+      "keys": [
+        "intermarche"
+      ],
+      "logo": "brand_intermarche"
+    },
+    {
+      "keys": [
+        "leaderprice"
+      ],
+      "logo": "brand_leader_price"
+    },
+    {
+      "keys": [
+        "eleclerc",
+        "leclerc"
+      ],
+      "logo": "brand_leclerc"
+    },
+    {
+      "keys": [
+        "lidl"
+      ],
+      "logo": "brand_lidl"
+    },
+    {
+      "keys": [
+        "match",
+        "supermarchematch"
+      ],
+      "logo": "brand_match"
+    },
+    {
+      "keys": [
+        "maximarche"
+      ],
+      "logo": "brand_maximarche"
+    },
+    {
+      "keys": [
+        "migrol"
+      ],
+      "logo": "brand_migrol"
+    },
+    {
+      "keys": [
+        "monoprix"
+      ],
+      "logo": "brand_monoprix"
+    },
+    {
+      "keys": [
+        "netto"
+      ],
+      "logo": "brand_netto"
+    },
+    {
+      "keys": [
+        "proxi"
+      ],
+      "logo": "brand_proxi"
+    },
+    {
+      "keys": [
+        "renault"
+      ],
+      "logo": "brand_renault"
+    },
+    {
+      "keys": [
+        "roady"
+      ],
+      "logo": "brand_roady",
+      "dark": true
+    },
+    {
+      "keys": [
+        "rompetrol"
+      ],
+      "logo": "brand_rompetrol"
+    },
+    {
+      "keys": [
+        "shell"
+      ],
+      "logo": "brand_shell"
+    },
+    {
+      "keys": [
+        "spar"
+      ],
+      "logo": "brand_spar"
+    },
+    {
+      "keys": [
+        "totalenergies",
+        "total"
+      ],
+      "logo": "brand_totalenergies"
+    },
+    {
+      "keys": [
+        "vito"
+      ],
+      "logo": "brand_vito"
+    },
+    {
+      "keys": [
+        "weldom"
+      ],
+      "logo": "brand_weldom"
+    }
+  ]
+}

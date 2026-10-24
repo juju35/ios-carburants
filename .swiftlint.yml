@@ -1,0 +1,40 @@
+included:
+  - Carburants
+  - CarburantsWidget
+  - Packages/CarburantsKit/Sources
+  - Packages/CarburantsKit/Tests
+excluded:
+  - "**/.build"
+line_length:
+  warning: 140
+  error: 180
+  ignores_urls: true
+  ignores_comments: true
+identifier_name:
+  excluded: [id, lat, lon, n, a, p1, p2, dp, dl, ch, go]
+type_body_length:
+  warning: 300
+file_length:
+  warning: 500
+function_body_length:
+  warning: 60
+function_parameter_count:
+  warning: 8
+  error: 12
+cyclomatic_complexity:
+  warning: 12
+nesting:
+  type_level: 2
+opt_in_rules:
+  - empty_count
+  - first_where
+  - last_where
+  - sorted_first_last
+  - closure_spacing
+  - redundant_nil_coalescing
+  - toggle_bool
+  - modifier_order
+disabled_rules:
+  - todo
+  # Trailing commas keep diffs to one line.
+  - trailing_comma

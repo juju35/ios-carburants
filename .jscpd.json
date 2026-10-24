@@ -1,0 +1,8 @@
+{
+  "threshold": 3,
+  "minTokens": 70,
+  "format": ["swift"],
+  "path": ["Carburants", "CarburantsWidget", "Packages/CarburantsKit/Sources"],
+  "reporters": ["console"],
+  "absolute": false
+}

@@ -1,0 +1,5 @@
+// Shared by Debug and Release. Your Apple developer team goes in Local.xcconfig (ignored by Git):
+//
+//     DEVELOPMENT_TEAM = ABCDE12345
+//
+#include? "Local.xcconfig"
