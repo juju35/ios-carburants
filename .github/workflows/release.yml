@@ -86,8 +86,10 @@ jobs:
           TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
         run: |
           set -o pipefail
-          test -n "$KEY_ID" && test -n "$ISSUER_ID" && test -n "$TEAM_ID" \
-            || { echo "::error::APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID and the APPLE_TEAM_ID variable are needed too"; exit 1; }
+          if [ -z "$KEY_ID" ] || [ -z "$ISSUER_ID" ] || [ -z "$TEAM_ID" ]; then
+            echo "::error::APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID and the APPLE_TEAM_ID variable are needed too"
+            exit 1
+          fi
           key="$RUNNER_TEMP/AuthKey_$KEY_ID.p8"
           printf '%s\n' "$ASC_KEY" > "$key"
           auth=(-allowProvisioningUpdates -authenticationKeyPath "$key"
