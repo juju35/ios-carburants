@@ -19,8 +19,8 @@ jobs:
           python-version: "3.13"
       - uses: pre-commit/action@v3.0.1
         env:
-          # Swift tools need macOS: SwiftLint runs in its own job below, Periphery in the Build workflow.
-          SKIP: swiftlint,periphery
+          # Swift tools need macOS: SwiftLint runs in its own job below, dead code in the Build workflow.
+          SKIP: swiftlint,dead-code
 
   ruff:
     name: Ruff (annotations)

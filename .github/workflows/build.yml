@@ -1,7 +1,8 @@
 name: Build
 
 # Generates the Xcode project, builds the app with its widget for the simulator (no signing) and runs
-# CarburantsKit's tests, with the iOS 27.1 SDK (iPhone Duo). Periphery lists unused code as annotations.
+# CarburantsKit's tests, with the iOS 27.1 SDK (iPhone Duo). SwiftLint's analyzer looks for unused code in the
+# app build's compiler log.
 on:
   push:
     branches: [main]
@@ -30,7 +31,7 @@ jobs:
       - name: Generate the project
         run: |
           xcodebuild -version
-          brew install xcodegen xcbeautify
+          brew install xcodegen xcbeautify swiftlint
           xcodegen
 
       - name: Pick a simulator
@@ -46,7 +47,14 @@ jobs:
           set -o pipefail
           xcodebuild build -project Carburants.xcodeproj -scheme Carburants \
             -destination "id=${{ steps.sim.outputs.id }}" \
-            CODE_SIGNING_ALLOWED=NO | xcbeautify --renderer github-actions
+            CODE_SIGNING_ALLOWED=NO | tee "$RUNNER_TEMP/build.log" | xcbeautify --renderer github-actions
+
+      - name: Dead code
+        # Reports only for now: findings are annotations, the job stays green.
+        continue-on-error: true
+        env:
+          REPORTER: github-actions-logging
+        run: scripts/dead-code.sh "$RUNNER_TEMP/build.log"
 
       - name: Test CarburantsKit
         working-directory: Packages/CarburantsKit
@@ -54,13 +62,3 @@ jobs:
           set -o pipefail
           xcodebuild test -scheme CarburantsKit -destination "id=${{ steps.sim.outputs.id }}" \
             | xcbeautify --renderer github-actions
-
-  dead-code:
-    name: Dead code (Periphery)
-    runs-on: xcode-27
-    # Reports only until a baseline is recorded (periphery scan --write-baseline).
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v5
-      - run: brew install xcodegen periphery && xcodegen
-      - run: periphery scan --format github-actions
