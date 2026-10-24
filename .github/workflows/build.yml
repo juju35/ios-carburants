@@ -26,7 +26,7 @@ jobs:
     name: Build and test
     runs-on: xcode-27
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Generate the project
         run: |

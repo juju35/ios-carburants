@@ -13,8 +13,8 @@ jobs:
     name: pre-commit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - uses: pre-commit/action@v3.0.1
@@ -26,14 +26,14 @@ jobs:
     name: Ruff (annotations)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: astral-sh/ruff-action@v4.1.0
 
   swiftlint:
     name: SwiftLint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       # Findings as annotations on the pull request; warnings fail the job too.
       - run: >
           docker run --rm -v "$PWD:/work" -w /work ghcr.io/realm/swiftlint:0.65.1

@@ -80,6 +80,8 @@ side panel when regular (unfolded, full screen).
 | --- | --- |
 | Lint | pre-commit (whitespace, YAML/JSON, Ruff for `scripts/`, jscpd duplication), SwiftLint `--strict` with annotations on pull requests |
 | Build | On the `xcode-27` runner with Xcode 27.1: XcodeGen, simulator build of the app and its widget (no signing), CarburantsKit tests; unused declarations and imports (SwiftLint analyzer), blocking, as annotations |
+| Release | On `main`, when `MARKETING_VERSION` in `project.yml` has no tag yet: GitHub release `vX.Y.Z` with the notes of its `CHANGELOG.md` section and a simulator build; archive signed by Xcode and sent to App Store Connect (TestFlight) when the App Store Connect key is set. Build number: commit count |
+| Update release notes | Rewrites a release's notes from `CHANGELOG.md` (input `tag`) |
 | Clean up merged branches | Deletes merged branches after each pull request and weekly |
 | Stale | Marks and closes inactive issues and pull requests |
 
@@ -96,6 +98,28 @@ Homebrew disables it in August 2027.
 
 The package tests:
 `xcodebuild test -scheme CarburantsKit -destination 'platform=iOS Simulator,name=iPhone 17'` in `Packages/CarburantsKit`.
+
+## Releases and TestFlight
+
+Bump `MARKETING_VERSION` in `project.yml`, add its `## X.Y.Z` section to `CHANGELOG.md`, push to `main`.
+
+The simulator build attached to each release runs in the Simulator:
+`unzip carburants-X.Y.Z-simulator.zip && xcrun simctl install booted Carburants.app`.
+
+**TestFlight** (once): in App Store Connect, create the app `me.jstephan.carburants`, then an API key under
+*Users and Access › Integrations › App Store Connect API* with the **Admin** role (Xcode's cloud signing creates the
+distribution certificate and profiles with it). Then:
+
+```sh
+gh secret set APP_STORE_CONNECT_KEY_ID --body ABC123DEFG
+gh secret set APP_STORE_CONNECT_ISSUER_ID --body 00000000-0000-0000-0000-000000000000
+gh secret set APP_STORE_CONNECT_KEY < AuthKey_ABC123DEFG.p8
+gh variable set APPLE_TEAM_ID --body ABCDE12345
+```
+
+Each new version is then archived, signed and uploaded; it shows in TestFlight once Apple has processed it.
+The App ID needs the CarPlay Fueling capability, which Apple grants on request: until then, signing fails on
+that entitlement (the GitHub release is published before the upload, so it is not affected).
 
 ## Privacy
 
