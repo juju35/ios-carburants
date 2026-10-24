@@ -60,8 +60,18 @@ public struct Opening: Hashable, Sendable {
     public static let dayNames = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
     private static let shortDayNames = ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."]
 
+    /// The time opening statuses are worked out at when none is given: now, or a fixed time (screenshots).
+    public nonisolated(unsafe) static var clock: () -> Date = { .now }
+
+    /// 9:41 today, French time: the time of screenshots, to match their status bar.
+    public static var nineFortyOne: Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        return calendar.date(bySettingHour: 9, minute: 41, second: 0, of: .now) ?? .now
+    }
+
     /// 1 = Monday … 7 = Sunday, and minutes since midnight, in French time.
-    public static func now(_ date: Date = .now) -> (day: Int, minutes: Int) {
+    public static func now(_ date: Date = Opening.clock()) -> (day: Int, minutes: Int) {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = zone
         let parts = calendar.dateComponents([.weekday, .hour, .minute], from: date)
@@ -69,7 +79,7 @@ public struct Opening: Hashable, Sendable {
         return (day, (parts.hour ?? 0) * 60 + (parts.minute ?? 0))
     }
 
-    public static func of(_ station: Station, at date: Date = .now) -> Opening? {
+    public static func of(_ station: Station, at date: Date = Opening.clock()) -> Opening? {
         let hours = station.hours
         let (day, current) = now(date)
         if alwaysOpen(hours) { return Opening(state: .always, text: "Ouvert 24h/24") }

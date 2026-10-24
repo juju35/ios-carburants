@@ -38,6 +38,8 @@ final class StationsModel {
 
     private init() {
         if Demo.isOn {
+            // Opening statuses at 9:41, the status bar's time, whenever the screenshots are taken.
+            Opening.clock = { Opening.nineFortyOne }
             fuels = [.gazole, .e10]
             sort = .price
             stations = Station.samples
