@@ -73,8 +73,8 @@ launch() {
   xcrun simctl launch "$1" "$BUNDLE" -demo YES -demoScreen "$2" -AppleLanguages '(fr)' -AppleLocale fr_FR >/dev/null
 }
 
-# iPhone Duo: closed (cover screen), open flat (inner screen, side panel), half folded at 90° in the book pose and in
-# the tabletop pose (map and list on either side of the fold). duoctl screenshots the screen in use.
+# iPhone Duo: closed (cover screen), open flat (inner screen, side panel), half folded (list and map on either side
+# of the fold). duoctl screenshots the screen in use.
 shoot_duo() {
   local dir="$OUT/iphone-duo" runtime udid
   runtime=$(xcrun simctl list runtimes -j | python3 -c '
@@ -99,12 +99,12 @@ print(ok[-1] if ok else "")')
   duoctl open --duration 1
   sleep "$DELAY"
   duoctl screenshot "$dir/02-open.png"
-  # The inner screen starts in landscape, fold down the middle: the book pose. Turned to portrait, the fold runs
-  # across the screen: the tabletop pose.
+  # The inner screen stays in landscape, fold down the middle: list on one half, map on the other, held as a
+  # book (90°) or set on a table opened wider (120°).
   duoctl half --duration 1
   sleep "$DELAY"
   duoctl screenshot "$dir/03-half-book.png"
-  duoctl rotate portrait
+  duoctl hinge 120 --duration 1
   sleep "$DELAY"
   duoctl screenshot "$dir/04-half-tabletop.png"
   ls "$dir"/*.png

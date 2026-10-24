@@ -52,6 +52,7 @@ struct StationDetailView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
         .navigationTitle(station.name)
         .navigationBarTitleDisplayMode(.inline)
     }

@@ -33,7 +33,7 @@ struct ContentView: View {
         }
         // Partly folded, the list has its own half of the screen: no sheet.
         .sheet(isPresented: .constant(!isRegular && fold == nil)) {
-            StationBrowser(model: model)
+            StationBrowser(model: model, showsFuelButton: false)
                 .presentationDetents([.height(110), Self.middle, .large], selection: $detent)
                 .presentationBackgroundInteraction(.enabled(upThrough: Self.middle))
                 .presentationDragIndicator(.visible)
@@ -66,9 +66,23 @@ struct ContentView: View {
             // The map fills the whole screen, under the status bar wherever it is (on the side on iPhone Duo), and
             // keeps its controls and framing inside the safe area, to which the list's room is added so stations
             // are not framed under it.
-            StationMap(model: model, camera: $camera)
-                .safeAreaPadding(isRegular ? .leading : .bottom, isRegular ? Self.panelWidth + 24 : height * 0.42)
-                .ignoresSafeArea()
+            if isRegular {
+                StationMap(model: model, camera: $camera)
+                    .safeAreaPadding(.leading, Self.panelWidth + 24)
+                    .ignoresSafeArea()
+            } else {
+                // Compact: the fuel button goes in the bar over the map, under the status bar (on the side of the
+                // iPhone Duo's cover screen, with the other bar buttons; top right elsewhere).
+                NavigationStack {
+                    StationMap(model: model, camera: $camera)
+                        .safeAreaPadding(.bottom, height * 0.42)
+                        .ignoresSafeArea()
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) { FuelButton(model: model) }
+                        }
+                        .toolbarBackground(.hidden, for: .navigationBar)
+                }
+            }
 
             if isRegular {
                 StationBrowser(model: model)
@@ -81,47 +95,50 @@ struct ContentView: View {
     }
 }
 
-/// iPhone Duo partly folded, around 90°. Nothing straddles the fold:
-/// - laptop / tabletop pose (fold across the screen): the map stands up above the fold, the list lies below it,
-///   within reach, as Apple's apps put the picture up and the controls down;
-/// - book pose (fold down the screen): the list on the leading side, the map on the trailing one.
+/// iPhone Duo partly folded, around 90°: the map fills the screen and the list sits in a glass panel on one side
+/// of the fold, as the side panel does, so nothing straddles the fold:
+/// - book pose (fold down the screen): the list takes the leading half, the map shows in the trailing one;
+/// - laptop pose (fold across the screen): the map stands up above the fold, the list lies below it, within reach.
 private struct FoldedLayout: View {
     @Bindable var model: StationsModel
     @Binding var camera: MapCameraPosition
     let fold: CGRect
     let size: CGSize
 
-    /// Clear space kept on each side of the hinge band.
+    /// Clear space kept on each side of the hinge band, and around the panel.
     private static let gap: CGFloat = 12
 
     var body: some View {
-        // Laid out in stacks, not offsets, so the map can run under the screen's edges and status bar.
-        let room = Self.gap * 2 + (stacked ? fold.height : fold.width)
-        Group {
-            if stacked {
-                VStack(spacing: 0) {
-                    map.frame(height: max(0, fold.minY - Self.gap))
-                    Color.clear.frame(height: room)
-                    StationBrowser(model: model)
-                }
-            } else {
-                HStack(spacing: 0) {
-                    StationBrowser(model: model).frame(width: max(0, fold.minX - Self.gap))
-                    Color.clear.frame(width: room)
-                    map
-                }
-            }
+        let stacked = fold.width >= fold.height
+        ZStack(alignment: stacked ? .bottom : .leading) {
+            // Stations framed in the half the list leaves free.
+            StationMap(model: model, camera: $camera)
+                .safeAreaPadding(stacked ? .bottom : .leading, stacked ? size.height - fold.minY + Self.gap : fold.maxX + Self.gap)
+                .ignoresSafeArea()
+
+            StationBrowser(model: model)
+                .frame(
+                    width: stacked ? nil : max(0, fold.minX - Self.gap * 2),
+                    height: stacked ? max(0, size.height - fold.maxY - Self.gap * 2) : nil
+                )
+                .frame(maxWidth: stacked ? .infinity : nil, maxHeight: stacked ? nil : .infinity)
+                .modifier(PanelBackground())
+                .padding(Self.gap)
         }
-        .frame(width: size.width, height: size.height)
-        .background(Color(.systemBackground))
         .animation(.smooth, value: fold)
     }
+}
 
-    /// Laptop / tabletop pose: the fold runs across the screen.
-    private var stacked: Bool { fold.width >= fold.height }
+/// Opens the fuel picker, from the bar over the map.
+private struct FuelButton: View {
+    @Bindable var model: StationsModel
 
-    private var map: some View {
-        StationMap(model: model, camera: $camera).ignoresSafeArea()
+    var body: some View {
+        Button {
+            model.showsFuelPicker = true
+        } label: {
+            Label(Format.fuels(model.fuels), systemImage: "fuelpump")
+        }
     }
 }
 

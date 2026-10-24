@@ -4,31 +4,34 @@ import SwiftUI
 /// The list of stations and, pushed over it, a station's detail; in the sheet or the side panel.
 struct StationBrowser: View {
     @Bindable var model: StationsModel
+    /// False when the fuel button sits over the map instead (compact layout).
+    var showsFuelButton = true
     @State private var path: [Station.ID] = []
-    @State private var showsFuelPicker = false
     @Environment(\.openURL) private var openURL
 
     var body: some View {
         NavigationStack(path: $path) {
             content
+                .modifier(ClearNavigationBackground())
                 .navigationTitle("Stations")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { toolbar }
                 .navigationDestination(for: Station.ID.self) { id in
                     if let station = model.station(id) {
                         StationDetailView(station: station, fuels: model.fuels)
+                            .modifier(ClearNavigationBackground())
                     } else {
                         ContentUnavailableView("Station introuvable", systemImage: "fuelpump.slash")
                     }
                 }
         }
-        .sheet(isPresented: $showsFuelPicker) {
+        .sheet(isPresented: $model.showsFuelPicker) {
             FuelPickerView(selection: model.fuels) { model.setFuels($0) }
         }
         .onAppear {
             // Opened from a widget before this view existed.
             if let id = model.selectedID { path = [id] }
-            if Demo.isOn, Demo.screen == .fuels { showsFuelPicker = true }
+            if Demo.isOn, Demo.screen == .fuels { model.showsFuelPicker = true }
         }
         .onChange(of: model.selectedID) { _, id in
             if let id, path.last != id { path = [id] }
@@ -121,12 +124,14 @@ struct StationBrowser: View {
     // MARK: - Toolbar
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            Button {
-                showsFuelPicker = true
-            } label: {
-                Label(Format.fuels(model.fuels), systemImage: "fuelpump")
-                    .labelStyle(.titleAndIcon)
+        if showsFuelButton {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    model.showsFuelPicker = true
+                } label: {
+                    Label(Format.fuels(model.fuels), systemImage: "fuelpump")
+                        .labelStyle(.titleAndIcon)
+                }
             }
         }
         ToolbarItem(placement: .topBarTrailing) {
@@ -191,4 +196,15 @@ struct StationRow: View {
 #Preview {
     List(Station.samples) { StationRow(station: $0, fuels: [.gazole, .e10], cheapest: $0.id == 35000001) }
         .listStyle(.plain)
+}
+
+/// The material or glass behind the list (sheet, side panel) shows through, instead of the navigation stack's white.
+private struct ClearNavigationBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 18, *) {
+            content.containerBackground(.clear, for: .navigation)
+        } else {
+            content
+        }
+    }
 }
