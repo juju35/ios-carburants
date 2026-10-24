@@ -26,7 +26,7 @@ final class StationsModel {
     private(set) var updatedAt: Date?
     /// The station shown on the map and in the detail.
     var selectedID: Station.ID?
-    /// The fuel picker, opened from the list's toolbar or from the button over the map.
+    /// The fuel picker, opened from the list's toolbar (and by the demo mode).
     var showsFuelPicker = false
 
     @ObservationIgnored private let preferences = Preferences.shared

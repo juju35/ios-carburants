@@ -33,7 +33,7 @@ struct ContentView: View {
         }
         // Partly folded, the list has its own half of the screen: no sheet.
         .sheet(isPresented: .constant(!isRegular && fold == nil)) {
-            StationBrowser(model: model, showsFuelButton: false)
+            StationBrowser(model: model)
                 .presentationDetents([.height(110), Self.middle, .large], selection: $detent)
                 .presentationBackgroundInteraction(.enabled(upThrough: Self.middle))
                 .presentationDragIndicator(.visible)
@@ -71,17 +71,9 @@ struct ContentView: View {
                     .safeAreaPadding(.leading, Self.panelWidth + 24)
                     .ignoresSafeArea()
             } else {
-                // Compact: the fuel button goes in the bar over the map, under the status bar (on the side of the
-                // iPhone Duo's cover screen, with the other bar buttons; top right elsewhere).
-                NavigationStack {
-                    StationMap(model: model, camera: $camera)
-                        .safeAreaPadding(.bottom, height * 0.42)
-                        .ignoresSafeArea()
-                        .toolbar {
-                            ToolbarItem(placement: .topBarTrailing) { FuelButton(model: model) }
-                        }
-                        .toolbarBackground(.hidden, for: .navigationBar)
-                }
+                StationMap(model: model, camera: $camera)
+                    .safeAreaPadding(.bottom, height * 0.42)
+                    .ignoresSafeArea()
             }
 
             if isRegular {
@@ -126,19 +118,6 @@ private struct FoldedLayout: View {
                 .padding(Self.gap)
         }
         .animation(.smooth, value: fold)
-    }
-}
-
-/// Opens the fuel picker, from the bar over the map.
-private struct FuelButton: View {
-    @Bindable var model: StationsModel
-
-    var body: some View {
-        Button {
-            model.showsFuelPicker = true
-        } label: {
-            Label(Format.fuels(model.fuels), systemImage: "fuelpump")
-        }
     }
 }
 

@@ -4,8 +4,6 @@ import SwiftUI
 /// The list of stations and, pushed over it, a station's detail; in the sheet or the side panel.
 struct StationBrowser: View {
     @Bindable var model: StationsModel
-    /// False when the fuel button sits over the map instead (compact layout).
-    var showsFuelButton = true
     @State private var path: [Station.ID] = []
     @Environment(\.openURL) private var openURL
 
@@ -124,14 +122,12 @@ struct StationBrowser: View {
     // MARK: - Toolbar
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
-        if showsFuelButton {
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    model.showsFuelPicker = true
-                } label: {
-                    Label(Format.fuels(model.fuels), systemImage: "fuelpump")
-                        .labelStyle(.titleAndIcon)
-                }
+        ToolbarItem(placement: .topBarLeading) {
+            Button {
+                model.showsFuelPicker = true
+            } label: {
+                Label(Format.fuels(model.fuels), systemImage: "fuelpump")
+                    .labelStyle(.titleAndIcon)
             }
         }
         ToolbarItem(placement: .topBarTrailing) {
