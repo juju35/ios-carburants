@@ -107,7 +107,12 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
 
     private func point(_ station: Station) -> CPPointOfInterest {
         let fuels = model.fuels
-        let item = MKMapItem(placemark: MKPlacemark(coordinate: station.coordinate))
+        let item: MKMapItem
+        if #available(iOS 26, *) {
+            item = MKMapItem(location: CLLocation(latitude: station.latitude, longitude: station.longitude), address: nil)
+        } else {
+            item = MKMapItem(placemark: MKPlacemark(coordinate: station.coordinate))
+        }
         item.name = station.name
         let prices = priceLine(station, fuels: fuels)
         let place = [station.distanceKm.map(Format.distance), Opening.of(station)?.text].compactMap { $0 }.joined(separator: " · ")

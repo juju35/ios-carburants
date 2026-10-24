@@ -100,6 +100,7 @@ struct StationBrowser: View {
             }
         }
         .listStyle(.plain)
+        .scrollContentBackground(.hidden)
         .refreshable { await model.refresh()?.value }
     }
 

@@ -1,7 +1,7 @@
 name: Build
 
 # Generates the Xcode project, builds the app with its widget for the simulator (no signing) and runs
-# CarburantsKit's tests. Periphery lists unused code as annotations.
+# CarburantsKit's tests, with the iOS 27.1 SDK (iPhone Duo). Periphery lists unused code as annotations.
 on:
   push:
     branches: [main]
@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # Xcode 27 runner image: 27.0 (default), 27.1, 27.2 beta; 27.1 carries the iOS 27.1 SDK.
+  DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
@@ -19,12 +23,13 @@ concurrency:
 jobs:
   build:
     name: Build and test
-    runs-on: macos-latest
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v5
 
       - name: Generate the project
         run: |
+          xcodebuild -version
           brew install xcodegen xcbeautify
           xcodegen
 
@@ -52,7 +57,7 @@ jobs:
 
   dead-code:
     name: Dead code (Periphery)
-    runs-on: macos-latest
+    runs-on: xcode-27
     # Reports only until a baseline is recorded (periphery scan --write-baseline).
     continue-on-error: true
     steps:

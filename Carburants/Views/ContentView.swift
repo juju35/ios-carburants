@@ -28,9 +28,7 @@ struct ContentView: View {
                     StationBrowser(model: model)
                         .frame(width: Self.panelWidth)
                         .frame(maxHeight: .infinity, alignment: .top)
-                        .background(.regularMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                        .shadow(color: .black.opacity(0.15), radius: 16, y: 4)
+                        .modifier(PanelBackground())
                         .padding(12)
                 }
             }
@@ -57,6 +55,22 @@ struct ContentView: View {
             withAnimation(.smooth) {
                 camera = .region(MKCoordinateRegion(center: station.coordinate, latitudinalMeters: 1_500, longitudinalMeters: 1_500))
             }
+        }
+    }
+}
+
+/// Liquid Glass from iOS 26, a material before.
+private struct PanelBackground: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
+        if #available(iOS 26, *) {
+            content.glassEffect(.regular, in: shape)
+        } else {
+            content
+                .background(.regularMaterial, in: shape)
+                .clipShape(shape)
+                .shadow(color: .black.opacity(0.15), radius: 16, y: 4)
         }
     }
 }

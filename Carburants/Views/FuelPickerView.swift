@@ -8,7 +8,7 @@ struct FuelPickerView: View {
     private let onDone: ([Fuel]) -> Void
 
     init(selection: [Fuel], onDone: @escaping ([Fuel]) -> Void) {
-        _selection = State(initialValue: Set(selection))
+        self.selection = Set(selection)
         self.onDone = onDone
     }
 

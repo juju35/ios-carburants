@@ -1,16 +1,16 @@
 import CarburantsKit
 import SwiftUI
 
-/// "Itinéraire" in Plans; a long press offers Google Maps and Waze when they are installed.
+/// "Itinéraire" in Plans; a long press offers Google Maps and Waze (Plans when they are not installed:
+/// canOpenURL is deprecated since iOS 27, so the app tries and falls back).
 struct DirectionsButton: View {
     let station: Station
     @Environment(\.openURL) private var openURL
 
     var body: some View {
         Menu {
-            Button { openURL(Directions.appleMaps(station)) } label: { Label("Plans", systemImage: "map") }
-            ForEach(Directions.otherApps(station), id: \.name) { app in
-                Button { openURL(app.url) } label: { Label(app.name, systemImage: "arrow.triangle.turn.up.right.diamond") }
+            ForEach(Directions.apps(station), id: \.name) { app in
+                Button { open(app.url) } label: { Label(app.name, systemImage: app.symbol) }
             }
         } label: {
             Label {
@@ -32,11 +32,19 @@ struct DirectionsButton: View {
         .buttonBorderShape(.roundedRectangle(radius: 12))
         .controlSize(.large)
     }
+
+    private func open(_ url: URL) {
+        let fallback = Directions.appleMaps(station)
+        openURL(url) { accepted in
+            if !accepted { openURL(fallback) }
+        }
+    }
 }
 
 enum Directions {
     struct App {
         let name: String
+        let symbol: String
         let url: URL
     }
 
@@ -51,15 +59,15 @@ enum Directions {
         return components.url!
     }
 
-    /// Navigation apps installed besides Plans (their schemes are listed in LSApplicationQueriesSchemes).
-    @MainActor
-    static func otherApps(_ station: Station) -> [App] {
+    static func apps(_ station: Station) -> [App] {
         let lat = station.latitude
         let lon = station.longitude
-        let apps = [
-            App(name: "Google Maps", url: URL(string: "comgooglemaps://?daddr=\(lat),\(lon)&directionsmode=driving")!),
-            App(name: "Waze", url: URL(string: "waze://?ll=\(lat),\(lon)&navigate=yes")!),
+        return [
+            App(name: "Plans", symbol: "map", url: appleMaps(station)),
+            App(name: "Google Maps", symbol: "arrow.triangle.turn.up.right.diamond",
+                url: URL(string: "comgooglemaps://?daddr=\(lat),\(lon)&directionsmode=driving")!),
+            App(name: "Waze", symbol: "arrow.triangle.turn.up.right.diamond",
+                url: URL(string: "waze://?ll=\(lat),\(lon)&navigate=yes")!),
         ]
-        return apps.filter { UIApplication.shared.canOpenURL($0.url) }
     }
 }

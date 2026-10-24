@@ -58,9 +58,6 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
         NSLocationWhenInUseUsageDescription: Carburants utilise votre position pour trouver les stations-service les plus proches et leurs prix.
-        LSApplicationQueriesSchemes:
-          - comgooglemaps
-          - waze
         CFBundleURLTypes:
           - CFBundleURLName: me.jstephan.carburants
             CFBundleURLSchemes:

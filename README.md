@@ -8,7 +8,7 @@ The iOS counterpart of [aaos-carburants](https://github.com/juju35/aaos-carburan
   you drag up and down; on a regular width (iPhone Duo unfolded, iPad) the list becomes a floating side panel.
   Split View and several windows work, all on the same data
 - **Station card**: logo, distance, opening status, big *Itinéraire* button (Plans; long press for Google Maps or
-  Waze), price and freshness of your fuels, the other fuels, shortages, hours of the week, services
+  Waze, Plans when they are not installed), price and freshness of your fuels, the other fuels, shortages, hours of the week, services
 - **Fuels**: switch on those your car takes (Gazole, SP95, SP98, E10, E85, GPLc, at least one); sorting by price uses
   the cheapest of them at each station. Choices are remembered and shared with CarPlay and the widgets
 - **CarPlay** (Fueling category): map of the 12 best stations with *Y aller*, list sorted by price or distance,
@@ -51,6 +51,10 @@ scripts/app_icon.py             # draws the app icon (default, dark, tinted)
 
 ## Build and run
 
+Runs on iOS / iPadOS 17 to 27. Built with **Xcode 27.1** (iOS 27.1 SDK, the one with iPhone Duo; Xcode 27 needs
+an Apple silicon Mac), so the app gets the iOS 27 behaviour: Liquid Glass sheets, toolbars and side panel (glass from
+iOS 26, materials before), scene-based lifecycle, live resizing.
+
 ```sh
 brew install xcodegen
 echo 'DEVELOPMENT_TEAM = ABCDE12345' > Config/Local.xcconfig   # your team ID, not committed
@@ -75,7 +79,7 @@ side panel when regular (unfolded, full screen).
 | Workflow | What |
 | --- | --- |
 | Lint | pre-commit (whitespace, YAML/JSON, Ruff for `scripts/`, jscpd duplication), SwiftLint `--strict` with annotations on pull requests |
-| Build | XcodeGen, simulator build of the app and its widget (no signing), CarburantsKit tests; Periphery (unused code) as annotations, not blocking until a baseline is recorded |
+| Build | On the `xcode-27` runner with Xcode 27.1: XcodeGen, simulator build of the app and its widget (no signing), CarburantsKit tests; Periphery (unused code) as annotations, not blocking until a baseline is recorded |
 | Clean up merged branches | Deletes merged branches after each pull request and weekly |
 | Stale | Marks and closes inactive issues and pull requests |
 

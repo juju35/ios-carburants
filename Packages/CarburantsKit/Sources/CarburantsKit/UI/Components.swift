@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 public extension Color {
     init(rgb: UInt32) {
@@ -64,7 +65,7 @@ public struct StationLogo: View {
             switch store.artwork(for: station) {
             case let .logo(image, dark):
                 (dark ? Color(rgb: 0x202124) : Color.white)
-                Image(uiImage: image)
+                accented(Image(uiImage: image))
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
@@ -86,6 +87,13 @@ public struct StationLogo: View {
         .clipShape(shape)
         .overlay(shape.strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.5))
         .accessibilityHidden(true)
+    }
+
+    /// In a widget shown tinted or clear (Home Screen, CarPlay), the logo follows the tint instead of
+    /// staying in colour.
+    private func accented(_ image: Image) -> Image {
+        if #available(iOS 18, *) { return image.widgetAccentedRenderingMode(.accentedDesaturated) }
+        return image
     }
 
     // Grey gradient, as Contacts draws a contact without a photo.
