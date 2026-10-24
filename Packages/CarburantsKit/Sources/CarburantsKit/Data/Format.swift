@@ -61,7 +61,7 @@ public struct Opening: Hashable, Sendable {
     private static let shortDayNames = ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."]
 
     /// The time opening statuses are worked out at when none is given: now, or a fixed time (screenshots).
-    public nonisolated(unsafe) static var clock: () -> Date = { .now }
+    nonisolated(unsafe) public static var clock: () -> Date = { .now }
 
     /// 9:41 today, French time: the time of screenshots, to match their status bar.
     public static var nineFortyOne: Date {
