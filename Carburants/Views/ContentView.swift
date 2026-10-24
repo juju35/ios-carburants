@@ -12,7 +12,7 @@ struct ContentView: View {
     @State private var framed = false
 
     private static let middle = PresentationDetent.fraction(0.42)
-    private static let panelWidth: CGFloat = 380
+    private static let panelWidth: CGFloat = 420
 
     private var isRegular: Bool { sizeClass == .regular }
 

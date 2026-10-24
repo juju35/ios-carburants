@@ -28,6 +28,12 @@ shoot() {
   local udid
   udid=$(xcrun simctl create "Carburants screenshots" "$type")
   trap 'xcrun simctl delete "$udid" >/dev/null 2>&1 || true' RETURN
+  # System in French (status bar date on iPad, system sheets), then boot again for it to apply.
+  xcrun simctl boot "$udid"
+  xcrun simctl bootstatus "$udid" -b >/dev/null
+  xcrun simctl spawn "$udid" defaults write -g AppleLanguages -array fr-FR
+  xcrun simctl spawn "$udid" defaults write -g AppleLocale fr_FR
+  xcrun simctl shutdown "$udid"
   xcrun simctl boot "$udid"
   xcrun simctl bootstatus "$udid" -b >/dev/null
   xcrun simctl status_bar "$udid" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 \
