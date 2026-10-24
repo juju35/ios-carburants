@@ -1,7 +1,7 @@
 name: Screenshots
 
-# Takes the App Store screenshots (appstore/screenshots) and the README's copies (screenshots/) again from the
-# app's demo mode, and commits them when they change.
+# Takes the App Store and iPhone Duo screenshots (appstore/screenshots) and the README's copies (screenshots/)
+# again from the app's demo mode, and commits them when they change.
 on:
   push:
     branches: [main]
@@ -31,9 +31,22 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Tools
+        env:
+          # duoctl folds the iPhone Duo simulator through private simulator interfaces (no network, nothing outside
+          # the simulator): reviewed and pinned at this commit; check the diff before moving it.
+          DUOCTL_SHA: efd5e3d62fd85f555057b429deafcc9c81123454
         run: |
           brew install xcodegen
           python3 -m pip install --break-system-packages pillow
+          git clone -q https://github.com/skarol/duoctl "$RUNNER_TEMP/duoctl"
+          git -C "$RUNNER_TEMP/duoctl" checkout -q "$DUOCTL_SHA"
+          echo "$RUNNER_TEMP/duoctl/skills/duoctl/scripts" >> "$GITHUB_PATH"
+
+      # The image only has the iOS 27.0 simulators; the iPhone Duo comes with the 27.1 runtime.
+      - name: iOS 27.1 simulator runtime
+        run: |
+          xcodebuild -downloadPlatform iOS
+          xcrun simctl list devicetypes | grep -i duo
 
       - name: Take screenshots
         run: scripts/screenshots.sh

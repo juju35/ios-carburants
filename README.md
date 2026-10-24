@@ -28,12 +28,19 @@ The iOS counterpart of [aaos-carburants](https://github.com/juju35/aaos-carburan
 | --- | --- | --- | --- |
 | ![Nearby stations](screenshots/iphone-01-list-light.png) | ![Station](screenshots/iphone-02-detail-light.png) | ![Fuels](screenshots/iphone-03-fuels-light.png) | ![Dark mode](screenshots/iphone-04-list-dark.png) |
 
-**iPad and iPhone Duo unfolded** (regular width: side panel)
+**iPhone Duo**: cover screen, inner screen open flat, half folded (book and tabletop poses)
+
+| Cover screen | Open flat | Half folded, book | Half folded, tabletop |
+| --- | --- | --- | --- |
+| ![Cover screen](screenshots/duo-01-cover.png) | ![Open flat](screenshots/duo-02-open.png) | ![Book](screenshots/duo-03-half-book.png) | ![Tabletop](screenshots/duo-04-half-tabletop.png) |
+
+**iPad** (regular width: side panel)
 
 ![iPad](screenshots/ipad-01-list-light.png)
 
-Taken by `scripts/screenshots.sh` from the app's demo mode (made-up prices around Rennes) on fresh simulators; the
-Screenshots workflow takes them again when the app changes. Full-size App Store copies are in
+Taken by `scripts/screenshots.sh` from the app's demo mode (made-up prices around Rennes) on fresh simulators, the
+iPhone Duo folded with [duoctl](https://github.com/skarol/duoctl); the Screenshots workflow takes them again when the
+app changes. Full-size App Store copies are in
 [`appstore/screenshots`](appstore/README.md).
 
 ## Data
