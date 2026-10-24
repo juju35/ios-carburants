@@ -1,0 +1,51 @@
+name: Screenshots
+
+# Takes the App Store screenshots (appstore/screenshots) and the README's copies (screenshots/) again from the
+# app's demo mode, and commits them when they change.
+on:
+  push:
+    branches: [main]
+    paths:
+      - Carburants/**
+      - Packages/CarburantsKit/Sources/**
+      - project.yml
+      - scripts/screenshots.sh
+      - scripts/screenshots_post.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+
+concurrency:
+  group: screenshots
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Tools
+        run: |
+          brew install xcodegen
+          python3 -m pip install --break-system-packages pillow
+
+      - name: Take screenshots
+        run: scripts/screenshots.sh
+
+      - name: Commit
+        run: |
+          git add appstore/screenshots screenshots
+          if git diff --cached --quiet; then
+            echo "Screenshots unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update screenshots"
+          git pull --rebase origin main
+          git push origin HEAD:main

@@ -54,6 +54,8 @@ targets:
       path: Carburants/Info.plist
       properties:
         CFBundleDisplayName: Carburants
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.navigation
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
@@ -101,6 +103,8 @@ targets:
       path: CarburantsWidget/Info.plist
       properties:
         CFBundleDisplayName: Carburants
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSWidgetWantsLocation: true
         NSLocationWhenInUseUsageDescription: Carburants utilise votre position pour trouver les stations-service les plus proches et leurs prix.
         NSExtension:

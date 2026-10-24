@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/icon.png" width="128" alt="Carburants icon"></p>
+
 # Carburants — iOS, CarPlay & widgets
 
 Nearby fuel stations and their prices for **iPhone (iPhone Duo included), iPad, CarPlay and the Home and Lock
@@ -18,6 +20,20 @@ The iOS counterpart of [aaos-carburants](https://github.com/juju35/aaos-carburan
   your fuels or show one in particular; tapping a station opens it in the app
 - Automatic refresh after 2 km or 10 minutes, pull to refresh; 10 km radius, widened to 30 km when there are fewer
   than 3 stations. Dark mode, Dynamic Type and VoiceOver labels throughout
+
+## Screenshots
+
+| Nearby stations | Station | Fuels | Dark mode |
+| --- | --- | --- | --- |
+| ![Nearby stations](screenshots/iphone-01-list-light.png) | ![Station](screenshots/iphone-02-detail-light.png) | ![Fuels](screenshots/iphone-03-fuels-light.png) | ![Dark mode](screenshots/iphone-04-list-dark.png) |
+
+**iPad and iPhone Duo unfolded** (regular width: side panel)
+
+![iPad](screenshots/ipad-01-list-light.png)
+
+Taken by `scripts/screenshots.sh` from the app's demo mode (made-up prices around Rennes) on fresh simulators; the
+Screenshots workflow takes them again when the app changes. Full-size App Store copies are in
+[`appstore/screenshots`](appstore/README.md).
 
 ## Data
 
@@ -46,7 +62,9 @@ Carburants/
 ├── Views/                      # map, list sheet / side panel, station card, fuel picker
 └── CarPlay/                    # CPTemplateApplicationScene delegate and templates
 CarburantsWidget/               # WidgetKit extension (App Intent configuration)
-scripts/app_icon.py             # draws the app icon (default, dark, tinted)
+scripts/app_icon.py             # draws the app icon (default, dark, tinted) and docs/icon.png
+scripts/screenshots.sh          # App Store and README screenshots (demo mode, simulators)
+appstore/                       # App Store Connect texts, screenshots, privacy and review answers
 ```
 
 ## Build and run
@@ -81,6 +99,7 @@ side panel when regular (unfolded, full screen).
 | Lint | pre-commit (whitespace, YAML/JSON, Ruff for `scripts/`, jscpd duplication), SwiftLint `--strict` with annotations on pull requests |
 | Build | On the `xcode-27` runner with Xcode 27.1: XcodeGen, simulator build of the app and its widget (no signing), CarburantsKit tests; unused declarations and imports (SwiftLint analyzer), blocking, as annotations |
 | Release | On `main`, when `MARKETING_VERSION` in `project.yml` has no tag yet: GitHub release `vX.Y.Z` with the notes of its `CHANGELOG.md` section and a simulator build; archive signed by Xcode and sent to App Store Connect (TestFlight) when the App Store Connect key is set. Build number: commit count |
+| Screenshots | When the app changes: App Store screenshots (iPhone 6.9", iPad 13") and the README's copies from the demo mode, committed when they change |
 | Update release notes | Rewrites a release's notes from `CHANGELOG.md` (input `tag`) |
 | Clean up merged branches | Deletes merged branches after each pull request and weekly |
 | Stale | Marks and closes inactive issues and pull requests |

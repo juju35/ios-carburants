@@ -37,6 +37,13 @@ final class StationsModel {
     private static let refetchInterval: TimeInterval = 10 * 60
 
     private init() {
+        if Demo.isOn {
+            fuels = [.gazole, .e10]
+            sort = .price
+            stations = Station.samples
+            updatedAt = .now.addingTimeInterval(-4 * 60)
+            return
+        }
         fuels = preferences.fuels
         sort = preferences.sort
         // Last list for an instant start, when recent and for the same fuels; distances refresh with the next search.
@@ -68,6 +75,10 @@ final class StationsModel {
     // MARK: - Actions
 
     func start() {
+        if Demo.isOn {
+            if Demo.screen == .detail { selectedID = visible.first?.id }
+            return
+        }
         location.start()
         guard !started else { return }
         started = true
@@ -76,6 +87,7 @@ final class StationsModel {
 
     /// Back to the foreground: a new search if the list is old.
     func resume() {
+        guard !Demo.isOn else { return }
         location.start()
         if let current = location.location, isStale(current), fetchTask == nil { refresh() }
     }

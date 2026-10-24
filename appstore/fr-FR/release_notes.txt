@@ -1,0 +1,1 @@
+Première version : stations proches et prix en direct, fiche station avec itinéraire, CarPlay, widgets, iPhone Duo et iPad.

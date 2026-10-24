@@ -1,0 +1,23 @@
+Carburants trouve les stations-service autour de vous et affiche leurs prix en direct, publiés par le ministère de l'Économie.
+
+LA MOINS CHÈRE, D'UN COUP D'ŒIL
+• Carte et liste des stations proches, avec le prix de vos carburants ; la moins chère en vert
+• Tri par prix ou par distance
+• Choisissez les carburants de votre véhicule : Gazole, SP95, SP98, SP95-E10, E85, GPLc
+• Ruptures de stock signalées
+
+TOUT SUR LA STATION
+• Logo de l'enseigne, distance, ouverture en ce moment
+• Prix de chaque carburant et leur fraîcheur
+• Horaires de la semaine, services (boutique, lavage, gonflage…)
+• Itinéraire en un geste dans Plans, Google Maps ou Waze
+
+DANS LA VOITURE ET SUR L'ÉCRAN D'ACCUEIL
+• CarPlay : carte et liste des stations, détails, « Y aller »
+• Widgets : la station la moins chère, ou les plus proches, sur l'écran d'accueil et l'écran verrouillé
+• iPhone, iPhone Duo et iPad, avec Split View
+
+SANS COMPTE, SANS PUB
+Aucun compte, aucune publicité, aucun suivi. Votre position sert uniquement à chercher les stations proches.
+
+Les prix couvrent la France. Données : « Prix des carburants en France – flux instantané » (data.economie.gouv.fr), noms et enseignes d'OpenStreetMap et de Wikidata.

@@ -1,13 +1,17 @@
-"""Draws the app icon (default, dark and tinted appearances) into Carburants/Assets.xcassets/AppIcon.appiconset.
+"""Draws the app icon (default, dark and tinted appearances) into Carburants/Assets.xcassets/AppIcon.appiconset,
+and its rounded 256 px copy for the README (docs/icon.png).
 
-Same pump glyph and green as the Android Automotive app. Run: python scripts/app_icon.py (needs cairosvg).
+Same pump glyph and green as the Android Automotive app. Run: python scripts/app_icon.py (needs cairosvg, Pillow).
 """
 
 from pathlib import Path
 
 import cairosvg
+from PIL import Image, ImageDraw
 
-OUT = Path(__file__).resolve().parent.parent / "Carburants/Assets.xcassets/AppIcon.appiconset"
+ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / "Carburants/Assets.xcassets/AppIcon.appiconset"
+README_ICON = ROOT / "docs/icon.png"
 
 # Material "local_gas_station" glyph, 24 x 24.
 PUMP = (
@@ -51,3 +55,14 @@ if __name__ == "__main__":
     for name, content in ICONS.items():
         cairosvg.svg2png(bytestring=content.encode(), write_to=str(OUT / name))
         print(OUT / name)
+
+    # Rounded as on a Home Screen (iOS's corner radius is about 22.4 % of the side), drawn large then reduced.
+    icon = Image.open(OUT / "AppIcon.png").convert("RGBA")
+    mask = Image.new("L", icon.size, 0)
+    ImageDraw.Draw(mask).rounded_rectangle(
+        (0, 0, icon.width - 1, icon.height - 1), radius=round(icon.width * 0.224), fill=255
+    )
+    icon.putalpha(mask)
+    README_ICON.parent.mkdir(exist_ok=True)
+    icon.resize((256, 256), Image.Resampling.LANCZOS).save(README_ICON, optimize=True)
+    print(README_ICON)

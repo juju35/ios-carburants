@@ -28,6 +28,7 @@ struct StationBrowser: View {
         .onAppear {
             // Opened from a widget before this view existed.
             if let id = model.selectedID { path = [id] }
+            if Demo.isOn, Demo.screen == .fuels { showsFuelPicker = true }
         }
         .onChange(of: model.selectedID) { _, id in
             if let id, path.last != id { path = [id] }
@@ -41,7 +42,7 @@ struct StationBrowser: View {
 
     @ViewBuilder private var content: some View {
         let location = model.location
-        if location.authorization == .notDetermined {
+        if !Demo.isOn, location.authorization == .notDetermined {
             ContentUnavailableView {
                 Label("Stations à proximité", systemImage: "location.circle.fill")
             } description: {
@@ -50,7 +51,7 @@ struct StationBrowser: View {
                 Button("Autoriser la localisation") { location.requestPermission() }
                     .buttonStyle(.borderedProminent)
             }
-        } else if location.isDenied {
+        } else if !Demo.isOn, location.isDenied {
             ContentUnavailableView {
                 Label("Localisation désactivée", systemImage: "location.slash.fill")
             } description: {

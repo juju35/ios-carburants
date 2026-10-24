@@ -40,6 +40,9 @@ struct ContentView: View {
                 .presentationDragIndicator(.visible)
                 .interactiveDismissDisabled()
         }
+        .onAppear {
+            if Demo.isOn, Demo.screen == .detail { detent = .large }
+        }
         .onChange(of: model.stations == nil) { _, cleared in
             if cleared { framed = false }
         }
@@ -51,7 +54,7 @@ struct ContentView: View {
         }
         .onChange(of: model.selectedID) { _, id in
             guard let station = model.station(id) else { return }
-            if !isRegular, detent == .large { detent = Self.middle }
+            if !isRegular, detent == .large, !Demo.isOn { detent = Self.middle }
             withAnimation(.smooth) {
                 camera = .region(MKCoordinateRegion(center: station.coordinate, latitudinalMeters: 1_500, longitudinalMeters: 1_500))
             }
