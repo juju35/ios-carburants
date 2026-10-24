@@ -74,12 +74,23 @@ side panel when regular (unfolded, full screen).
 
 | Workflow | What |
 | --- | --- |
-| Lint | pre-commit (whitespace, YAML/JSON, Ruff for `scripts/`), SwiftLint `--strict` with annotations on pull requests, jscpd (duplication) |
+| Lint | pre-commit (whitespace, YAML/JSON, Ruff for `scripts/`, jscpd duplication), SwiftLint `--strict` with annotations on pull requests |
 | Build | XcodeGen, simulator build of the app and its widget (no signing), CarburantsKit tests; Periphery (unused code) as annotations, not blocking until a baseline is recorded |
 | Clean up merged branches | Deletes merged branches after each pull request and weekly |
 | Stale | Marks and closes inactive issues and pull requests |
 
-Locally: `swiftlint`, `pre-commit run --all-files`, and the package tests with
+Locally, the same checks run as Git hooks:
+
+```sh
+brew install pre-commit swiftlint periphery xcodegen
+pre-commit install        # SwiftLint, jscpd, whitespace on commit; Periphery (unused code) on push
+```
+
+Periphery only reports for now. Once its first findings are cleaned up or accepted, record them with
+`periphery scan --write-baseline .periphery.baseline.json` and add `baseline: .periphery.baseline.json` and
+`strict: true` to `.periphery.yml`: the hook and CI then block on new unused code only.
+
+The package tests:
 `xcodebuild test -scheme CarburantsKit -destination 'platform=iOS Simulator,name=iPhone 17'` in `Packages/CarburantsKit`.
 
 ## Privacy

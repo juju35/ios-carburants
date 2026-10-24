@@ -58,7 +58,4 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: brew install xcodegen periphery && xcodegen
-      - run: >
-          periphery scan --project Carburants.xcodeproj --schemes Carburants
-          --retain-swift-ui-previews --retain-codable-properties --format github-actions
-          -- -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
+      - run: periphery scan --format github-actions

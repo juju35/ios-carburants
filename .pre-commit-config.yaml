@@ -1,3 +1,6 @@
+# pre-commit install  (pre-commit and pre-push hooks)
+# SwiftLint and Periphery come from Homebrew: brew install swiftlint periphery xcodegen
+default_install_hook_types: [pre-commit, pre-push]
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -14,3 +17,25 @@ repos:
       - id: ruff-check
         args: [--fix]
       - id: ruff-format
+  - repo: local
+    hooks:
+      - id: swiftlint
+        name: SwiftLint
+        entry: swiftlint lint --strict --quiet
+        language: system
+        types: [swift]
+      - id: jscpd
+        name: Duplication (jscpd)
+        entry: jscpd
+        language: node
+        additional_dependencies: [jscpd@5.4.2]
+        pass_filenames: false
+        types: [swift]
+      # Builds the app: on push only. Reports until a baseline is recorded (see README).
+      - id: periphery
+        name: Dead code (Periphery)
+        entry: periphery scan --quiet
+        language: system
+        pass_filenames: false
+        types: [swift]
+        stages: [pre-push]
