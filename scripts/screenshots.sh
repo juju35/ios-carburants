@@ -80,10 +80,19 @@ prepare() {
   mkdir -p "$dir"
 }
 
-# launch <udid> <screen>: the app again, in demo mode on that screen.
+# launch <udid> <screen>: the app again, in demo mode on that screen. Right after a boot or a fold, the system may
+# refuse to open apps for a moment (simctl exits with 149): tried again a few times.
 launch() {
+  local attempt
   xcrun simctl terminate "$1" "$BUNDLE" >/dev/null 2>&1 || true
-  xcrun simctl launch "$1" "$BUNDLE" -demo YES -demoScreen "$2" -AppleLanguages '(fr)' -AppleLocale fr_FR >/dev/null
+  for attempt in 1 2 3 4 5; do
+    if xcrun simctl launch "$1" "$BUNDLE" -demo YES -demoScreen "$2" -AppleLanguages '(fr)' -AppleLocale fr_FR >/dev/null; then
+      return 0
+    fi
+    echo "Launch $attempt refused on $1 ($2), trying again"
+    sleep 5
+  done
+  return 1
 }
 
 # iPhone Duo: closed (cover screen), open flat (inner screen, side panel), half folded (list and map on either side
