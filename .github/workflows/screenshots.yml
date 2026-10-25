@@ -1,6 +1,6 @@
 name: Screenshots
 
-# Takes the App Store and iPhone Duo screenshots (appstore/screenshots) and the README's copies (screenshots/)
+# Takes the App Store, iPhone Duo and CarPlay screenshots (appstore/screenshots) and the README's copies (screenshots/)
 # again from the app's demo mode, and commits them when they change.
 on:
   push:
@@ -12,6 +12,7 @@ on:
       - scripts/screenshots.sh
       - scripts/screenshots_post.py
       - scripts/screenshots_unchanged.py
+      - scripts/carplay.py
       - .github/workflows/screenshots.yml
   workflow_dispatch:
     inputs:
@@ -19,20 +20,45 @@ on:
         description: Commit every new screenshot, even when it barely differs (subtle changes such as Liquid Glass)
         type: boolean
         default: false
+      only:
+        description: Take only these screenshots
+        type: choice
+        options: [all, devices, carplay]
+        default: all
 
 permissions:
   contents: write
-
-env:
-  DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
 
 concurrency:
   group: screenshots
   cancel-in-progress: true
 
 jobs:
-  screenshots:
+  # Built once with Xcode 27.1 (iOS 27.1 SDK) for both jobs below.
+  app:
     runs-on: xcode-27
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build
+        run: |
+          brew install xcodegen
+          ONLY=build scripts/screenshots.sh
+          ditto -c -k --keepParent build/screenshots/Build/Products/Debug-iphonesimulator/Carburants.app "$RUNNER_TEMP/app.zip"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: app
+          path: ${{ runner.temp }}/app.zip
+          retention-days: 1
+
+  # iPhone, iPad, iPhone Duo.
+  devices:
+    needs: app
+    if: inputs.only != 'carplay'
+    runs-on: xcode-27
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
     steps:
       - uses: actions/checkout@v7
 
@@ -42,7 +68,6 @@ jobs:
           # the simulator): reviewed and pinned at this commit; check the diff before moving it.
           DUOCTL_SHA: efd5e3d62fd85f555057b429deafcc9c81123454
         run: |
-          brew install xcodegen
           python3 -m pip install --break-system-packages pillow
           git clone -q https://github.com/skarol/duoctl "$RUNNER_TEMP/duoctl"
           git -C "$RUNNER_TEMP/duoctl" checkout -q "$DUOCTL_SHA"
@@ -54,10 +79,95 @@ jobs:
           xcodebuild -downloadPlatform iOS
           xcrun simctl list devicetypes | grep -i duo
 
+      - uses: actions/download-artifact@v7
+        with:
+          name: app
+          path: ${{ runner.temp }}
+
       - name: Take screenshots
-        run: scripts/screenshots.sh
+        run: |
+          ditto -x -k "$RUNNER_TEMP/app.zip" "$RUNNER_TEMP"
+          APP="$RUNNER_TEMP/Carburants.app" ONLY="iphone ipad duo" scripts/screenshots.sh
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: devices
+          path: |
+            appstore/screenshots/iphone-6.9
+            appstore/screenshots/ipad-13
+            appstore/screenshots/iphone-duo
+
+  # Xcode 27's Device Hub has no CarPlay for simulators: Xcode 26's Simulator app, on macOS 26.
+  carplay:
+    needs: app
+    if: inputs.only != 'devices'
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Tools
+        run: python3 -m pip install --break-system-packages pillow numpy
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: app
+          path: ${{ runner.temp }}
+
+      - name: Take screenshots
+        run: |
+          ditto -x -k "$RUNNER_TEMP/app.zip" "$RUNNER_TEMP"
+          APP="$RUNNER_TEMP/Carburants.app" ONLY=carplay scripts/screenshots.sh
+
+      # With what the CarPlay screen showed before each tap, to see what went wrong.
+      - if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: carplay
+          path: |
+            appstore/screenshots/carplay
+            build/carplay-debug
+          if-no-files-found: ignore
+
+  commit:
+    needs: [devices, carplay]
+    if: always() && (needs.devices.result == 'success' || needs.carplay.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v7
+        with:
+          path: ${{ runner.temp }}/shots
+
+      - name: README copies
+        run: |
+          shots="$RUNNER_TEMP/shots"
+          if [ -d "$shots/devices" ]; then cp -R "$shots/devices/." appstore/screenshots/; fi
+          if [ -d "$shots/carplay/appstore/screenshots/carplay" ]; then
+            rm -rf appstore/screenshots/carplay
+            cp -R "$shots/carplay/appstore/screenshots/carplay" appstore/screenshots/
+          fi
+          python3 -m pip install --break-system-packages pillow
+          python3 scripts/screenshots_post.py appstore/screenshots screenshots
+
+      # A run on another branch is a trial: its screenshots go to the screenshots-trial branch (replaced each time)
+      # to be looked at, nothing is committed.
+      - name: Trial screenshots
+        if: github.ref != 'refs/heads/main'
+        run: |
+          trial="$RUNNER_TEMP/trial"
+          mkdir -p "$trial"
+          cp -R appstore/screenshots screenshots "$trial"/
+          cp -R "$RUNNER_TEMP/shots/carplay/build/carplay-debug" "$trial"/ 2>/dev/null || true
+          cd "$trial"
+          git init -q -b screenshots-trial
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898283+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Trial screenshots from ${GITHUB_REF_NAME}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}" HEAD:screenshots-trial
 
       - name: Commit
+        if: github.ref == 'refs/heads/main'
         run: |
           if [ "${{ inputs.force }}" != "true" ]; then
             python3 scripts/screenshots_unchanged.py appstore/screenshots screenshots

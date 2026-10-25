@@ -25,6 +25,7 @@ What App Store Connect asks for, kept with the code. Texts in `fr-FR/` are paste
 | iPhone screenshots | `screenshots/iphone-6.9/` | 1320 × 2868 (6.9", required; App Store Connect scales it to the smaller iPhones) |
 | iPad screenshots | `screenshots/ipad-13/` | 2064 × 2752 (13", required for an app that runs on iPad) |
 | iPhone Duo screenshots | `screenshots/iphone-duo/` | cover and inner screens, half folded (for the README; App Store Connect has no iPhone Duo slot of its own so far) |
+| CarPlay screenshots | `screenshots/carplay/` | 800 × 480: map, list, station, fuels (for the README; App Store Connect has no CarPlay slot) |
 
 They are taken by `scripts/screenshots.sh` from the app's demo mode (made-up prices around Rennes) on fresh
 simulators, status bar at 9:41, and committed again by the Screenshots workflow when the app changes. Upload them in

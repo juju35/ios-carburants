@@ -34,12 +34,19 @@ The iOS counterpart of [aaos-carburants](https://github.com/juju35/aaos-carburan
 | --- | --- | --- | --- |
 | ![Cover screen](screenshots/duo-01-cover.png) | ![Open flat](screenshots/duo-02-open.png) | ![Book](screenshots/duo-03-half-book.png) | ![Tabletop](screenshots/duo-04-half-tabletop.png) |
 
+**CarPlay**: map of the stations, list, station details, fuel picker
+
+| Map | List | Station | Fuels |
+| --- | --- | --- | --- |
+| ![Map](screenshots/carplay-01-map.png) | ![List](screenshots/carplay-02-list.png) | ![Station](screenshots/carplay-03-detail.png) | ![Fuels](screenshots/carplay-04-fuels.png) |
+
 **iPad** (regular width: side panel)
 
 ![iPad](screenshots/ipad-01-list-light.png)
 
 Taken by `scripts/screenshots.sh` from the app's demo mode (made-up prices around Rennes) on fresh simulators, the
-iPhone Duo folded with [duoctl](https://github.com/skarol/duoctl); the Screenshots workflow takes them again when the
+iPhone Duo folded with [duoctl](https://github.com/skarol/duoctl), CarPlay on the Simulator's CarPlay screen (Xcode 26's
+Simulator app: Xcode 27's Device Hub has no CarPlay for simulators); the Screenshots workflow takes them again when the
 app changes. Full-size App Store copies are in
 [`appstore/screenshots`](appstore/README.md).
 
@@ -113,7 +120,7 @@ list and map side by side in the book pose. In the Simulator, fold the iPhone Du
 | Lint | pre-commit (whitespace, YAML/JSON, Ruff for `scripts/`, jscpd duplication), SwiftLint `--strict` with annotations on pull requests |
 | Build | On the `xcode-27` runner with Xcode 27.1: XcodeGen, simulator build of the app and its widget (no signing), CarburantsKit tests; unused declarations and imports (SwiftLint analyzer), blocking, as annotations |
 | Release | On `main`, when `MARKETING_VERSION` in `project.yml` has no tag yet: GitHub release `vX.Y.Z` with the notes of its `CHANGELOG.md` section and a simulator build; archive signed by Xcode and sent to App Store Connect (TestFlight) when the App Store Connect key is set. Build number: commit count. After a failed upload, run it by hand with *testflight* to upload the same version again |
-| Screenshots | When the app changes: App Store screenshots (iPhone 6.9", iPad 13") and the README's copies from the demo mode, committed when they change |
+| Screenshots | When the app changes: App Store screenshots (iPhone 6.9", iPad 13"), iPhone Duo and CarPlay ones (CarPlay on a macOS 26 runner, Xcode 26's Simulator) and the README's copies from the demo mode, committed when they change |
 | Update release notes | Rewrites a release's notes from `CHANGELOG.md` (input `tag`) |
 | Clean up merged branches | Deletes merged branches after each pull request and weekly |
 | Stale | Marks and closes inactive issues and pull requests |

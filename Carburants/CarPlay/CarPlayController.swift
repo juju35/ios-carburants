@@ -59,6 +59,22 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         model.start()
         model.resume()
         observe()
+        if Demo.isOn { showDemo(in: tabs) }
+    }
+
+    /// The screen scripts/screenshots.sh asks for.
+    private func showDemo(in tabs: CPTabBarTemplate) {
+        switch Demo.carPlay {
+        case .map:
+            break
+        case .list:
+            tabs.select(listTemplate)
+        case .detail:
+            tabs.select(listTemplate)
+            if let station = model.visible.first { showDetail(station) }
+        case .fuels:
+            tabs.select(fuelTemplate)
+        }
     }
 
     /// Renders now, and again after any change to what was read (until the scene goes and this controller with it).

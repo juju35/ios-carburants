@@ -1,7 +1,7 @@
 """Finishes scripts/screenshots.sh's captures.
 
 - App Store Connect refuses screenshots with an alpha channel: the PNGs are flattened in place.
-- The README shows smaller copies (screenshots/, 600 px wide for iPhone, 1000 px for iPad, 800 px for iPhone Duo).
+- The README shows smaller copies (screenshots/, 600 px wide for iPhone, 1000 px for iPad, 800 px for iPhone Duo and CarPlay).
 
 Usage: python scripts/screenshots_post.py appstore/screenshots screenshots
 """
@@ -12,7 +12,12 @@ from pathlib import Path
 from PIL import Image
 
 # Folder: (README file prefix, width).
-README = {"iphone-6.9": ("iphone", 600), "ipad-13": ("ipad", 1000), "iphone-duo": ("duo", 800)}
+README = {
+    "iphone-6.9": ("iphone", 600),
+    "ipad-13": ("ipad", 1000),
+    "iphone-duo": ("duo", 800),
+    "carplay": ("carplay", 800),
+}
 
 
 def main(source: Path, readme: Path) -> None:
