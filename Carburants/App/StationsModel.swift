@@ -92,6 +92,19 @@ final class StationsModel {
         guard !started else { return }
         started = true
         Task { await StationRepository.shared.warmUp() }
+        // Standing still, no location update comes: every minute, a new search once the list is 10 minutes old.
+        // Suspended with the app in the background, so it only runs while the app or CarPlay is in use.
+        Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                self?.refreshIfOld()
+            }
+        }
+    }
+
+    private func refreshIfOld() {
+        guard fetchTask == nil, let updatedAt, Date().timeIntervalSince(updatedAt) > Self.refetchInterval else { return }
+        refresh()
     }
 
     /// Back to the foreground: a new search if the list is old.

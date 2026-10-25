@@ -109,7 +109,10 @@ struct StationBrowser: View {
     private var footer: some View {
         VStack(spacing: 4) {
             if let date = model.updatedAt {
-                Text("Mis à jour \(Format.ago(date)) · rayon de \(model.radiusKm) km")
+                // Kept current between searches.
+                TimelineView(.everyMinute) { _ in
+                    Text("Mis à jour \(Format.ago(date)) · rayon de \(model.radiusKm) km")
+                }
             }
             Text("Prix publiés par le ministère de l’Économie")
         }
