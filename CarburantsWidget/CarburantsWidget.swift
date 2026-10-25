@@ -144,7 +144,11 @@ private struct WidgetRow: View {
                 Text(station.name)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
-                Text([station.distanceKm.map(Format.distance), Opening.of(station, at: date)?.text].compactMap { $0 }.joined(separator: " · "))
+                Text(
+                    [station.distanceKm.map(Format.distance), Opening.of(station, at: date)?.text]
+                        .compactMap { $0 }
+                        .joined(separator: " · ")
+                )
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
