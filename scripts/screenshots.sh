@@ -113,6 +113,17 @@ launch() {
   return 1
 }
 
+# retry <command...>: duoctl sometimes fails to reach the simulator right after a fold; tried again a few times.
+retry() {
+  local attempt
+  for attempt in 1 2 3; do
+    if (trap - ERR; "$@"); then return 0; fi
+    echo "$* failed ($attempt), trying again"
+    sleep 5
+  done
+  "$@"
+}
+
 # iPhone Duo: closed (cover screen), open flat (inner screen, side panel), half folded (list and map on either side
 # of the fold). duoctl screenshots the screen in use.
 shoot_duo() {
@@ -132,19 +143,19 @@ print(ok[-1] if ok else "")')
   export DUOCTL_UDID="$udid"
   xcrun simctl ui "$udid" appearance light
 
-  duoctl close
+  retry duoctl close
   launch "$udid" list
   sleep $((DELAY * 2))
   duoctl screenshot "$dir/01-cover.png"
-  duoctl open --duration 1
+  retry duoctl open --duration 1
   sleep "$DELAY"
   duoctl screenshot "$dir/02-open.png"
   # The inner screen stays in landscape, fold down the middle: list on one half, map on the other, held as a
   # book (90°) or set on a table opened wider (120°).
-  duoctl half --duration 1
+  retry duoctl half --duration 1
   sleep "$DELAY"
   duoctl screenshot "$dir/03-half-book.png"
-  duoctl hinge 120 --duration 1
+  retry duoctl hinge 120 --duration 1
   sleep "$DELAY"
   duoctl screenshot "$dir/04-half-tabletop.png"
   ls "$dir"/*.png
@@ -176,12 +187,12 @@ print(sorted(ids)[-1] if ids else "")')
   trap 'osascript -e "quit app \"Simulator\"" >/dev/null 2>&1 || true; xcrun simctl delete "$udid" >/dev/null 2>&1 || true' RETURN
   prepare "$udid" "$tmp"
   xcrun simctl ui "$udid" appearance light
-  if ! opened=$(open "$simulator" --args -CurrentDeviceUDID "$udid" 2>&1); then
+  if ! opened=$(trap - ERR; open "$simulator" --args -CurrentDeviceUDID "$udid" 2>&1); then
     echo "::warning title=CarPlay screenshots::could not open $simulator: ${opened//$'\n'/ }"
     return 0
   fi
   sleep "$DELAY"
-  if ! opened=$(python3 scripts/carplay.py open 2>&1); then
+  if ! opened=$(trap - ERR; python3 scripts/carplay.py open 2>&1); then
     echo "::warning title=CarPlay screenshots::could not open the Simulator's CarPlay screen, previous ones kept: ${opened//$'\n'/ }"
     return 0
   fi
@@ -189,7 +200,7 @@ print(sorted(ids)[-1] if ids else "")')
   for screen in map list detail fuels; do
     launch "$udid" list -demoCarPlay "$screen"
     sleep 3
-    if ! opened=$(python3 scripts/carplay.py tap "$udid" "build/carplay-debug/$screen-home.png" 2>&1); then
+    if ! opened=$(trap - ERR; python3 scripts/carplay.py tap "$udid" "build/carplay-debug/$screen-home.png" 2>&1); then
       echo "::warning title=CarPlay screenshots::could not open Carburants on the CarPlay screen, previous ones kept: ${opened//$'\n'/ }"
       return 0
     fi

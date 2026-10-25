@@ -120,11 +120,14 @@ def tap(udid: str, debug: Path) -> None:
     title_bar = height - screenshot.height / scale
     point = (round(left + x / scale), round(top + title_bar + y / scale))
     print(f"CarPlay window {left},{top} {width}x{height}: click at {point[0]},{point[1]}")
-    click(*point)
-    for _ in range(5):
-        time.sleep(2)
-        if not still_home(udid, debug):
-            return
+    # The first click sometimes only brings the window forward: clicked again while the home screen stays.
+    for attempt in range(3):
+        click(*point)
+        for _ in range(4):
+            time.sleep(2)
+            if not still_home(udid, debug):
+                return
+        print(f"Click {attempt + 1} did not open the app")
     raise SystemExit(f"The click at {point} did not open Carburants on the CarPlay screen")
 
 
