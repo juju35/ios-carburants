@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 ROOT = Path(__file__).resolve().parent.parent
 ICONS = [ROOT / "Carburants/Assets.xcassets/AppIcon.appiconset" / name for name in ("AppIcon.png", "AppIcon-Dark.png")]
@@ -25,6 +25,10 @@ MAX_DIFFERENCE = 900.0
 # the icon matches at about 900, the app's screens at 1400 and more.
 GRID_LEFT = 110
 HOME_DIFFERENCE = 1200.0
+# The left bar's home button, and the mean edge strength above which the app's screen is drawn (about 2 while blank,
+# 14 with the map or a list).
+HOME_BUTTON = (52, 428)
+MIN_EDGES = 5.0
 
 
 def osascript(script: str) -> str:
@@ -104,44 +108,62 @@ def find_icon(screenshot: Image.Image) -> tuple[float, float, float]:
 
 
 def tap(udid: str, debug: Path) -> None:
-    subprocess.run(
-        ["xcrun", "simctl", "io", udid, "screenshot", "--display=external", "--type=png", str(debug)],
-        check=True,
-        capture_output=True,
-    )
-    screenshot = Image.open(debug)
-    x, y, difference = find_icon(screenshot)
-    print(f"Icon at {x:.0f},{y:.0f} of {screenshot.width}x{screenshot.height} (difference {difference:.0f})")
-    if difference > MAX_DIFFERENCE:
-        raise SystemExit(f"No Carburants icon on the CarPlay screen (best difference {difference:.0f}), see {debug}")
-    left, top, width, height = window_bounds()
-    # The window is the screen scaled down, under a title bar.
-    scale = screenshot.width / width
-    title_bar = height - screenshot.height / scale
-    point = (round(left + x / scale), round(top + title_bar + y / scale))
-    print(f"CarPlay window {left},{top} {width}x{height}: click at {point[0]},{point[1]}")
+    """Back to the home screen if an app shows, then the app's icon in the grid until the app has drawn its screen."""
+    window = window_bounds()
+    screen = capture(udid, debug)
+    if grid_icon(screen) is None:
+        print("Not on the home screen: home button")
+        click(*to_window(HOME_BUTTON, screen, window))
+        for _ in range(5):
+            time.sleep(2)
+            screen = capture(udid, debug)
+            if grid_icon(screen) is not None:
+                break
+    icon = grid_icon(screen)
+    if icon is None:
+        raise SystemExit(f"No Carburants icon on the CarPlay home screen, see {debug}")
+    point = to_window(icon, screen, window)
+    print(f"Icon at {icon[0]:.0f},{icon[1]:.0f}, CarPlay window {window}: click at {point}")
     # The first click sometimes only brings the window forward: clicked again while the home screen stays.
+    after = debug.with_name(debug.stem + "-after.png")
     for attempt in range(3):
         click(*point)
-        for _ in range(4):
+        for _ in range(8):
             time.sleep(2)
-            if not still_home(udid, debug):
+            screen = capture(udid, after)
+            if grid_icon(screen) is None and drawn(screen):
                 return
-        print(f"Click {attempt + 1} did not open the app")
-    raise SystemExit(f"The click at {point} did not open Carburants on the CarPlay screen")
+        print(f"Click {attempt + 1}: the app's screen did not show")
+    raise SystemExit(f"The click at {point} did not open Carburants on the CarPlay screen, see {after}")
 
 
-def still_home(udid: str, debug: Path) -> bool:
-    """The app's big icon is still in the home screen's grid (the small one in the left bar stays there)."""
-    after = debug.with_name(debug.stem + "-after.png")
+def capture(udid: str, path: Path) -> Image.Image:
     subprocess.run(
-        ["xcrun", "simctl", "io", udid, "screenshot", "--display=external", "--type=png", str(after)],
+        ["xcrun", "simctl", "io", udid, "screenshot", "--display=external", "--type=png", str(path)],
         check=True,
         capture_output=True,
     )
-    screen = Image.open(after)
-    grid = screen.crop((GRID_LEFT, 0, screen.width, screen.height))
-    return find_icon(grid)[2] <= HOME_DIFFERENCE
+    return Image.open(path)
+
+
+def grid_icon(screen: Image.Image) -> tuple[float, float] | None:
+    """Centre of the app's big icon in the home screen's grid (the small one in the left bar stays there)."""
+    x, y, difference = find_icon(screen.crop((GRID_LEFT, 0, screen.width, screen.height)))
+    return (x + GRID_LEFT, y) if difference <= HOME_DIFFERENCE else None
+
+
+def drawn(screen: Image.Image) -> bool:
+    """The app's templates are drawn: right of the left bar, an app that is still starting is a blank background."""
+    area = screen.convert("L").crop((GRID_LEFT, 0, screen.width, screen.height))
+    return float(np.asarray(area.filter(ImageFilter.FIND_EDGES), dtype=np.float64).mean()) > MIN_EDGES
+
+
+def to_window(point: tuple[float, float], screen: Image.Image, window: tuple[int, int, int, int]) -> tuple[int, int]:
+    """A point of the CarPlay screen on the Mac's screen: the window is the screen scaled down, under a title bar."""
+    left, top, width, height = window
+    scale = screen.width / width
+    title_bar = height - screen.height / scale
+    return round(left + point[0] / scale), round(top + title_bar + point[1] / scale)
 
 
 def click(x: int, y: int) -> None:
