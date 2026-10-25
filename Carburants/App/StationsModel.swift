@@ -37,6 +37,8 @@ final class StationsModel {
     // New search after 2 km or 10 minutes (the feed is refreshed every 10 minutes).
     private static let refetchMeters: CLLocationDistance = 2_000
     private static let refetchInterval: TimeInterval = 10 * 60
+    // CoreLocation first hands over its last known fix, possibly hours old: not a place to search around.
+    private static let maxFixAge: TimeInterval = 60
 
     private init() {
         if Demo.isOn {
@@ -93,7 +95,7 @@ final class StationsModel {
     func resume() {
         guard !Demo.isOn else { return }
         location.start()
-        if let current = location.location, isStale(current), fetchTask == nil { refresh() }
+        if let current = location.location, isFresh(current), isStale(current), fetchTask == nil { refresh() }
     }
 
     func setFuels(_ newValue: [Fuel]) {
@@ -139,7 +141,17 @@ final class StationsModel {
     // MARK: - Loading
 
     private func locationChanged(_ location: CLLocation) {
-        if isStale(location), fetchTask == nil { refresh() }
+        guard isFresh(location) else { return }
+        if fetchTask != nil {
+            // A search is running from an earlier position: start again when this one is far from it.
+            if let from = fetchedAt, location.distance(from: from) > Self.refetchMeters { refresh() }
+        } else if isStale(location) {
+            refresh()
+        }
+    }
+
+    private func isFresh(_ location: CLLocation) -> Bool {
+        -location.timestamp.timeIntervalSinceNow < Self.maxFixAge
     }
 
     private func isStale(_ location: CLLocation) -> Bool {
