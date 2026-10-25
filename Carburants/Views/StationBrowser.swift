@@ -108,6 +108,12 @@ struct StationBrowser: View {
 
     private var footer: some View {
         VStack(spacing: 4) {
+            // A list is already shown: the failure of a newer search goes here rather than replacing it.
+            if case let .failed(message) = model.phase {
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.center)
+            }
             if let date = model.updatedAt {
                 // Kept current between searches.
                 TimelineView(.everyMinute) { _ in
