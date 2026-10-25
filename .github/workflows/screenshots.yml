@@ -25,6 +25,10 @@ on:
         type: choice
         options: [all, devices, carplay]
         default: all
+      trial:
+        description: Push the screenshots to the screenshots-trial branch instead of committing them
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -156,10 +160,10 @@ jobs:
           python3 -m pip install --break-system-packages pillow
           python3 scripts/screenshots_post.py appstore/screenshots screenshots
 
-      # A run on another branch is a trial: its screenshots go to the screenshots-trial branch (replaced each time)
+      # A trial (or a run on another branch): its screenshots go to the screenshots-trial branch (replaced each time)
       # to be looked at, nothing is committed.
       - name: Trial screenshots
-        if: github.ref != 'refs/heads/main'
+        if: github.ref != 'refs/heads/main' || inputs.trial
         run: |
           trial="$RUNNER_TEMP/trial"
           mkdir -p "$trial"
@@ -173,7 +177,7 @@ jobs:
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}" HEAD:screenshots-trial
 
       - name: Commit
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && !inputs.trial
         run: |
           if [ "${{ inputs.force }}" != "true" ]; then
             python3 scripts/screenshots_unchanged.py appstore/screenshots screenshots
