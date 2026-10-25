@@ -109,11 +109,10 @@ def find_icon(screenshot: Image.Image) -> tuple[float, float, float]:
 
 def tap(udid: str, debug: Path) -> None:
     """Back to the home screen if an app shows, then the app's icon in the grid until the app has drawn its screen."""
-    window = window_bounds()
     screen = capture(udid, debug)
     if grid_icon(screen) is None:
         print("Not on the home screen: home button")
-        click(*to_window(HOME_BUTTON, screen, window))
+        click_on(HOME_BUTTON, screen)
         for _ in range(5):
             time.sleep(2)
             screen = capture(udid, debug)
@@ -122,12 +121,11 @@ def tap(udid: str, debug: Path) -> None:
     icon = grid_icon(screen)
     if icon is None:
         raise SystemExit(f"No Carburants icon on the CarPlay home screen, see {debug}")
-    point = to_window(icon, screen, window)
-    print(f"Icon at {icon[0]:.0f},{icon[1]:.0f}, CarPlay window {window}: click at {point}")
+    print(f"Icon at {icon[0]:.0f},{icon[1]:.0f}")
     # The first click sometimes only brings the window forward: clicked again while the home screen stays.
     after = debug.with_name(debug.stem + "-after.png")
     for attempt in range(3):
-        click(*point)
+        point = click_on(icon, screen)
         for _ in range(8):
             time.sleep(2)
             screen = capture(udid, after)
@@ -135,6 +133,16 @@ def tap(udid: str, debug: Path) -> None:
                 return
         print(f"Click {attempt + 1}: the app's screen did not show")
     raise SystemExit(f"The click at {point} did not open Carburants on the CarPlay screen, see {after}")
+
+
+def click_on(point: tuple[float, float], screen: Image.Image) -> tuple[int, int]:
+    """Clicks that point of the CarPlay screen. The window is brought forward just before: a click that comes several
+    seconds after (the icon search takes that long) does not reach the CarPlay screen."""
+    window = window_bounds()
+    target = to_window(point, screen, window)
+    print(f"CarPlay window {window}: click at {target}")
+    click(*target)
+    return target
 
 
 def capture(udid: str, path: Path) -> Image.Image:
