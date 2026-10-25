@@ -75,6 +75,14 @@ struct StationBrowser: View {
             } else {
                 list
             }
+        } else if !Demo.isOn, location.failed {
+            ContentUnavailableView {
+                Label("Position introuvable", systemImage: "location.slash")
+            } description: {
+                Text("Carburants n’arrive pas à déterminer votre position. Vérifiez que le mode Avion est désactivé.")
+            } actions: {
+                Button("Réessayer") { location.retry() }
+            }
         } else if case let .failed(message) = model.phase {
             ContentUnavailableView {
                 Label("Prix indisponibles", systemImage: "wifi.exclamationmark")
@@ -113,6 +121,12 @@ struct StationBrowser: View {
                 Label(message, systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.orange)
                     .multilineTextAlignment(.center)
+            }
+            if model.location.isApproximate, !Demo.isOn {
+                Button("Position approximative : distances indicatives. Utiliser la position exacte") {
+                    model.location.requestPrecise()
+                }
+                .font(.footnote)
             }
             if let date = model.updatedAt {
                 // Kept current between searches.
