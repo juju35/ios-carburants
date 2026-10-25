@@ -40,11 +40,19 @@ public final class Preferences: @unchecked Sendable {
     }
 }
 
-/// The stations the widgets show last, for their links into the app.
+/// The stations the widgets showed lately, for their links into the app. Each widget (one per fuel, say) adds its
+/// own to the file instead of replacing the others'; the most recent ones are kept.
 public enum WidgetStations {
-    public static func load() -> [Station] { SharedStorage.readJSON([Station].self, from: "widget_stations.json") ?? [] }
+    private static let file = "widget_stations.json"
+    private static let limit = 100
 
-    public static func save(_ stations: [Station]) { SharedStorage.writeJSON(stations, to: "widget_stations.json") }
+    public static func load() -> [Station] { SharedStorage.readJSON([Station].self, from: file) ?? [] }
+
+    public static func save(_ stations: [Station]) {
+        let ids = Set(stations.map(\.id))
+        let kept = load().filter { !ids.contains($0.id) }
+        SharedStorage.writeJSON(Array((stations + kept).prefix(limit)), to: file)
+    }
 }
 
 /// The last list found, so the app and the widget have something to show at once.

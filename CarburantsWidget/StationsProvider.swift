@@ -45,6 +45,11 @@ struct StationsEntry: TimelineEntry {
     /// When the prices were fetched (an older list is shown when offline).
     let updated: Date
 
+    /// The same stations, shown from `date` on.
+    func at(_ date: Date) -> StationsEntry {
+        StationsEntry(date: date, fuels: fuels, stations: stations, state: state, updated: updated)
+    }
+
     static let sample = StationsEntry(
         date: .now, fuels: [.gazole],
         stations: StationSort.sorted(Station.samples, by: .price, fuels: [.gazole]),
@@ -66,7 +71,23 @@ struct StationsProvider: AppIntentTimelineProvider {
 
     func timeline(for configuration: StationsIntent, in context: Context) async -> Timeline<StationsEntry> {
         let entry = await load(configuration.fuel.fuels)
-        return Timeline(entries: [entry], policy: .after(.now.addingTimeInterval(Self.refresh)))
+        return Timeline(entries: Self.entries(from: entry), policy: .after(.now.addingTimeInterval(Self.refresh)))
+    }
+
+    /// The entry again at each minute an opening status changes before the next reload ("ferme à 21:00" turns to
+    /// "Fermé" at 21:00 without waiting for WidgetKit's next reload).
+    static func entries(from entry: StationsEntry) -> [StationsEntry] {
+        var entries = [entry]
+        var shown = entry.stations.map { Opening.of($0, at: entry.date) }
+        for minute in stride(from: 60.0, to: refresh, by: 60) {
+            let date = entry.date.addingTimeInterval(minute)
+            let now = entry.stations.map { Opening.of($0, at: date) }
+            if now != shown {
+                entries.append(entry.at(date))
+                shown = now
+            }
+        }
+        return entries
     }
 
     private func load(_ fuels: [Fuel]) async -> StationsEntry {
@@ -88,13 +109,14 @@ struct StationsProvider: AppIntentTimelineProvider {
                 return station
             }
             let stations = Array(StationSort.sorted(named, by: .price, fuels: fuels).prefix(Self.maxStations))
-            await LogoStore.shared.preload(stations)
+            await LogoStore.shared.preload(stations, timeout: 5)
             WidgetStations.save(stations)
             return StationsEntry(date: .now, fuels: fuels, stations: stations, state: .ready, updated: .now)
         } catch {
             // Offline: the app's last list when it was for these fuels.
             if let snapshot = Snapshot.load(), snapshot.fuels == fuels {
                 let stations = Array(StationSort.sorted(snapshot.stations, by: .price, fuels: fuels).prefix(Self.maxStations))
+                WidgetStations.save(stations)
                 return StationsEntry(date: .now, fuels: fuels, stations: stations, state: .ready, updated: snapshot.date)
             }
             return StationsEntry(date: .now, fuels: fuels, stations: [], state: .failed, updated: .now)

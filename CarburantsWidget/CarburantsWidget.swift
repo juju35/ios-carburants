@@ -118,7 +118,10 @@ private struct ListWidget: View {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: columns), spacing: 6) {
                 ForEach(stations) { station in
                     Link(destination: stationURL(station)) {
-                        WidgetRow(station: station, fuels: entry.fuels, cheapest: station.best(entry.fuels)?.price == cheapest)
+                        WidgetRow(
+                            station: station, fuels: entry.fuels, cheapest: station.best(entry.fuels)?.price == cheapest,
+                            date: entry.date
+                        )
                     }
                 }
             }
@@ -131,6 +134,8 @@ private struct WidgetRow: View {
     let station: Station
     let fuels: [Fuel]
     let cheapest: Bool
+    /// The entry's time: views are drawn ahead of it.
+    let date: Date
 
     var body: some View {
         HStack(spacing: 10) {
@@ -139,7 +144,7 @@ private struct WidgetRow: View {
                 Text(station.name)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
-                Text([station.distanceKm.map(Format.distance), Opening.of(station)?.text].compactMap { $0 }.joined(separator: " · "))
+                Text([station.distanceKm.map(Format.distance), Opening.of(station, at: date)?.text].compactMap { $0 }.joined(separator: " · "))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

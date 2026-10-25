@@ -37,13 +37,26 @@ public final class LogoStore: @unchecked Sendable {
         return .generic
     }
 
-    /// Downloads the logos not on disk yet. True when one is new.
+    /// Downloads the logos not on disk yet, all at once, each within `timeout` seconds (the widget has little time).
+    /// True when one is new.
     @discardableResult
-    public func preload(_ stations: [Station]) async -> Bool {
+    public func preload(_ stations: [Station], timeout: TimeInterval = 15) async -> Bool {
         let urls = Set(stations.compactMap { shipped.find($0.brand, $0.name) == nil ? $0.logoURL : nil })
+            .filter { cached($0) == nil }
+        guard !urls.isEmpty else { return false }
+        let downloads = await withTaskGroup(of: (URL, Data)?.self) { group in
+            for url in urls {
+                group.addTask { (try? await HTTP.get(url, timeout: timeout)).map { (url, $0) } }
+            }
+            var found: [(URL, Data)] = []
+            for await download in group {
+                if let download { found.append(download) }
+            }
+            return found
+        }
         var any = false
-        for url in urls where cached(url) == nil {
-            guard let data = try? await HTTP.get(url), let image = UIImage(data: data) else { continue }
+        for (url, data) in downloads {
+            guard let image = UIImage(data: data) else { continue }
             try? data.write(to: file(url), options: .atomic)
             memory.setObject(image, forKey: url as NSURL)
             any = true
