@@ -1,1 +1,11 @@
-Première version : stations proches et prix en direct, fiche station avec itinéraire, CarPlay, widgets, iPhone Duo et iPad.
+Nouveautés
+• iPhone Duo à moitié plié : la liste d’un côté de la pliure, la carte de l’autre
+• Panneau Liquid Glass sur iPad et iPhone Duo ouvert
+• Position approximative signalée, avec accès à la position exacte
+• Widgets : l’ouverture des stations change à la bonne minute
+
+Corrections
+• La recherche pouvait partir d’une ancienne position
+• Mise à jour automatique toutes les 10 minutes, même à l’arrêt
+• CarPlay : la fiche station ouverte ne se ferme plus à chaque mise à jour
+• « Rupture » n’apparaît plus pour un carburant simplement sans prix

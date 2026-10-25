@@ -9,7 +9,7 @@ What App Store Connect asks for, kept with the code. Texts in `fr-FR/` are paste
 | Promotional text | `fr-FR/promotional_text.txt` | 170 |
 | Description | `fr-FR/description.txt` | 4000 |
 | Keywords | `fr-FR/keywords.txt` (comma separated, no spaces) | 100 |
-| What's New | `fr-FR/release_notes.txt` (from 1.0.1) | 4000 |
+| What's New | `fr-FR/release_notes.txt` (not asked for the first version) | 4000 |
 | Support URL | https://github.com/juju35/ios-carburants/issues | |
 | Privacy Policy URL | https://github.com/juju35/ios-carburants/blob/main/PRIVACY.md | |
 | Category | Navigation (secondary: Travel) | |
