@@ -19,6 +19,26 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
     // The point-of-interest template shows at most 12 places.
     private static let maxPoints = 12
 
+    /// What a template was last built from: it is rebuilt only when that changes, so a refresh that changes nothing
+    /// on screen neither redraws the images nor closes the place card or scrolls the list back up.
+    private struct Content: Equatable {
+        let stations: [Station]
+        let fuels: [Fuel]
+        let cheapest: Double?
+        let logos: Int
+    }
+
+    private var pointsContent: Content?
+    private var listContent: Content?
+    private var listStatus: [String]?
+    private var listSort: StationOrder?
+    private var pickerFuels: [Fuel]?
+    /// The place the driver opened on the map, kept selected across rebuilds.
+    private var selectedID: Station.ID?
+    /// Rendered logos and badges, by station or fuel; emptied when downloaded logos arrive.
+    private var images: [String: UIImage] = [:]
+    private var imagesRevision = -1
+
     init(interface: CPInterfaceController, scene: CPTemplateApplicationScene) {
         self.interface = interface
         self.scene = scene
@@ -55,38 +75,65 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
     private func render() {
         let stations = model.visible
         let fuels = model.fuels
-        _ = LogoStore.shared.revision
-
-        let points = stations.prefix(Self.maxPoints).map { point($0) }
-        mapTemplate.setPointsOfInterest(points, selectedIndex: NSNotFound)
-
-        let items = stations.prefix(CPListTemplate.maximumItemCount).map { listItem($0) }
-        listTemplate.updateSections([CPListSection(items: items)])
-        listTemplate.emptyViewTitleVariants = [emptyTitle]
-        listTemplate.emptyViewSubtitleVariants = [emptySubtitle]
-        let sort = CPBarButton(title: model.sort == .price ? "Prix" : "Distance") { [weak self] _ in
-            guard let self else { return }
-            model.setSort(model.sort == .price ? .distance : .price)
+        let cheapest = model.cheapestPrice
+        let revision = LogoStore.shared.revision
+        let sort = model.sort
+        let status = [emptyTitle, emptySubtitle]
+        if revision != imagesRevision {
+            images.removeAll()
+            imagesRevision = revision
         }
-        listTemplate.trailingNavigationBarButtons = [sort]
 
-        let fuelItems = Fuel.allCases.map { fuel in
-            let item = CPListItem(
-                text: fuel.label,
-                detailText: fuel.summary,
-                image: image(FuelBadge(fuel, large: true)),
-                accessoryImage: fuels.contains(fuel) ? UIImage(systemName: "checkmark") : nil,
-                accessoryType: .none
-            )
-            item.handler = { [weak self] _, completion in
-                self?.model.toggleFuel(fuel)
-                completion()
+        let shownPoints = Content(stations: Array(stations.prefix(Self.maxPoints)), fuels: fuels, cheapest: cheapest, logos: revision)
+        if shownPoints != pointsContent {
+            pointsContent = shownPoints
+            let selected = shownPoints.stations.firstIndex { $0.id == selectedID } ?? NSNotFound
+            mapTemplate.setPointsOfInterest(shownPoints.stations.map { point($0) }, selectedIndex: selected)
+        }
+
+        let shownList = Content(
+            stations: Array(stations.prefix(CPListTemplate.maximumItemCount)), fuels: fuels, cheapest: cheapest, logos: revision
+        )
+        if shownList != listContent {
+            listContent = shownList
+            listTemplate.updateSections([CPListSection(items: shownList.stations.map { listItem($0) })])
+        }
+        if status != listStatus {
+            listStatus = status
+            listTemplate.emptyViewTitleVariants = [status[0]]
+            listTemplate.emptyViewSubtitleVariants = [status[1]]
+        }
+        if sort != listSort {
+            listSort = sort
+            let button = CPBarButton(title: sort == .price ? "Prix" : "Distance") { [weak self] _ in
+                guard let self else { return }
+                model.setSort(model.sort == .price ? .distance : .price)
             }
-            return item
+            listTemplate.trailingNavigationBarButtons = [button]
         }
-        fuelTemplate.updateSections([
-            CPListSection(items: fuelItems, header: "Carburants de votre véhicule", sectionIndexTitle: nil),
-        ])
+
+        if fuels != pickerFuels {
+            pickerFuels = fuels
+            let items = Fuel.allCases.map { fuelItem($0, chosen: fuels.contains($0)) }
+            fuelTemplate.updateSections([
+                CPListSection(items: items, header: "Carburants de votre véhicule", sectionIndexTitle: nil),
+            ])
+        }
+    }
+
+    private func fuelItem(_ fuel: Fuel, chosen: Bool) -> CPListItem {
+        let item = CPListItem(
+            text: fuel.label,
+            detailText: fuel.summary,
+            image: cachedImage("fuel-\(fuel.rawValue)") { FuelBadge(fuel, large: true) },
+            accessoryImage: chosen ? UIImage(systemName: "checkmark") : nil,
+            accessoryType: .none
+        )
+        item.handler = { [weak self] _, completion in
+            self?.model.toggleFuel(fuel)
+            completion()
+        }
+        return item
     }
 
     private var emptyTitle: String {
@@ -124,8 +171,11 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
             detailTitle: station.name,
             detailSubtitle: prices,
             detailSummary: "\(station.prettyAddress), \(station.prettyCity)\n\(place)",
-            pinImage: image(StationLogo(station, size: 32).overlay { cheapestRing(station, size: 32) })
+            pinImage: cachedImage("pin-\(station.id)-\(model.isCheapest(station))") {
+                StationLogo(station, size: 32).overlay { cheapestRing(station, size: 32) }
+            }
         )
+        point.userInfo = station.id
         point.primaryButton = CPTextButton(title: "Y aller", textStyle: .confirm) { [weak self] _ in
             self?.navigate(to: station)
         }
@@ -139,7 +189,9 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         let detail = [priceLine(station, fuels: model.fuels), station.distanceKm.map(Format.distance), Opening.of(station)?.text]
             .compactMap { $0 }
             .joined(separator: " · ")
-        let item = CPListItem(text: station.name, detailText: detail, image: image(StationLogo(station, size: 44)))
+        let item = CPListItem(
+            text: station.name, detailText: detail, image: cachedImage("row-\(station.id)") { StationLogo(station, size: 44) }
+        )
         item.accessoryType = .disclosureIndicator
         item.handler = { [weak self] _, completion in
             self?.showDetail(station)
@@ -190,13 +242,24 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         }
     }
 
-    private func image(_ view: some View) -> UIImage? {
-        let renderer = ImageRenderer(content: view)
+    private func cachedImage<Picture: View>(_ key: String, _ view: () -> Picture) -> UIImage? {
+        if let image = images[key] { return image }
+        let renderer = ImageRenderer(content: view())
         renderer.scale = interface.carTraitCollection.displayScale
-        return renderer.uiImage
+        let image = renderer.uiImage
+        images[key] = image
+        return image
     }
 
     // MARK: - CPPointOfInterestTemplateDelegate
 
     nonisolated func pointOfInterestTemplate(_ template: CPPointOfInterestTemplate, didChangeMapRegion region: MKCoordinateRegion) {}
+
+    nonisolated func pointOfInterestTemplate(
+        _ template: CPPointOfInterestTemplate, didSelectPointOfInterest pointOfInterest: CPPointOfInterest
+    ) {
+        let id = pointOfInterest.userInfo as? Station.ID
+        // CarPlay calls its delegates on the main thread.
+        MainActor.assumeIsolated { selectedID = id }
+    }
 }
