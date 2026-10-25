@@ -163,9 +163,9 @@ print(ok[-1] if ok else "")')
 
 # CarPlay: the Simulator's CarPlay screen (I/O › External Displays › CarPlay). Xcode 27's Device Hub has no CarPlay
 # for simulators, so this uses the Simulator app of Xcode 26 (CARPLAY_SIMULATOR to choose another) on an iOS 26
-# simulator; the Screenshots workflow runs it on a macOS 26 runner, with the app built by Xcode 27. The app's CarPlay scene only starts from its icon there, so for each screen the app is launched
-# in demo mode on the iPhone, then its icon is tapped on the CarPlay screen (scripts/carplay.py). Needs Accessibility
-# for osascript; skipped, the previous screenshots kept, when something is missing.
+# simulator; the Screenshots workflow runs it on a macOS 26 runner, with the app built by Xcode 27. The app's CarPlay
+# scene only starts from its icon on the CarPlay screen, clicked by scripts/carplay.py (needs Accessibility for
+# osascript). Skipped, the previous screenshots kept, when something fails.
 CARPLAY_IPHONE="${CARPLAY_IPHONE:-iPhone 17 Pro Max}"
 shoot_carplay() {
   local dir="$OUT/carplay" tmp udid n=1 screen simulator runtime opened
@@ -197,17 +197,28 @@ print(sorted(ids)[-1] if ids else "")')
     return 0
   fi
   sleep $((DELAY * 2))
-  for screen in map list detail fuels; do
-    launch "$udid" list -demoCarPlay "$screen"
-    sleep 3
-    if ! opened=$(trap - ERR; python3 scripts/carplay.py tap "$udid" "build/carplay-debug/$screen-home.png" 2>&1); then
-      echo "::warning title=CarPlay screenshots::could not open Carburants on the CarPlay screen, previous ones kept: ${opened//$'\n'/ }"
-      return 0
+  # The app is opened once from its icon (a relaunch does not reconnect its CarPlay scene), then each screen is
+  # reached as a driver would: the Liste tab, its first row, back, the Carburants tab (points of the 800 x 480 screen).
+  launch "$udid" list
+  sleep 3
+  if ! opened=$(trap - ERR; python3 scripts/carplay.py tap "$udid" build/carplay-debug/home.png 2>&1); then
+    echo "::warning title=CarPlay screenshots::could not open Carburants on the CarPlay screen, previous ones kept: ${opened//$'\n'/ }"
+    return 0
+  fi
+  echo "$opened"
+  local step steps=("map" "list:414:44" "detail:560:126" "-:140:44" "fuels:550:44") point
+  for step in "${steps[@]}"; do
+    screen="${step%%:*}"
+    if [ "$step" != "$screen" ]; then
+      point="${step#*:}"
+      if ! opened=$(trap - ERR; python3 scripts/carplay.py click "$udid" "${point%%:*}" "${point##*:}" 2>&1); then
+        echo "::warning title=CarPlay screenshots::$screen: ${opened//$'\n'/ }, previous ones kept"
+        return 0
+      fi
     fi
-    echo "$opened" | tee "build/carplay-debug/$screen.txt"
-    sleep $((n == 1 ? DELAY * 2 : DELAY))
-    # The whole Mac screen, to see where the click went.
-    screencapture -x "build/carplay-debug/$screen-mac.png" 2>/dev/null || true
+    [ "$screen" != "-" ] || continue
+    # Map tiles and logos.
+    sleep $((n == 1 ? DELAY * 2 : DELAY / 2))
     xcrun simctl io "$udid" screenshot --display=external --type=png "$(printf '%s/%02d-%s.png' "$tmp" "$n" "$screen")" >/dev/null
     n=$((n + 1))
   done

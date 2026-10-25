@@ -2,6 +2,7 @@
 
     python scripts/carplay.py open                  # I/O › External Displays › CarPlay
     python scripts/carplay.py tap <udid> <debug.png> # opens Carburants from its icon on the CarPlay screen
+    python scripts/carplay.py click <udid> <x> <y>   # clicks that point of the CarPlay screen (800 x 480)
 
 The CarPlay scene only starts from the app's icon on the CarPlay screen: the icon is found in a screenshot of that
 screen (the app icon, light or dark, matched at every size) and clicked through System Events, which needs
@@ -145,6 +146,27 @@ def click_on(point: tuple[float, float], screen: Image.Image) -> tuple[int, int]
     return target
 
 
+def click_inside(udid: str, x: float, y: float) -> None:
+    """A click in the app (a tab, a row), then until its new screen is drawn."""
+    path = ROOT / "build/carplay-debug/click.png"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    before = capture(udid, path)
+    click_on((x, y), before)
+    for _ in range(8):
+        time.sleep(1)
+        screen = capture(udid, path)
+        if drawn(screen) and changed(before, screen):
+            return
+    raise SystemExit(f"The click at {x:.0f},{y:.0f} changed nothing on the CarPlay screen, see {path}")
+
+
+def changed(before: Image.Image, after: Image.Image) -> bool:
+    difference = np.abs(
+        np.asarray(before.convert("L"), dtype=np.float64) - np.asarray(after.convert("L"), dtype=np.float64)
+    )
+    return float((difference > 64).mean()) > 0.02
+
+
 def capture(udid: str, path: Path) -> Image.Image:
     subprocess.run(
         ["xcrun", "simctl", "io", udid, "screenshot", "--display=external", "--type=png", str(path)],
@@ -200,5 +222,7 @@ if __name__ == "__main__":
         open_window()
     elif sys.argv[1:2] == ["tap"] and len(sys.argv) == 4:
         tap(sys.argv[2], Path(sys.argv[3]))
+    elif sys.argv[1:2] == ["click"] and len(sys.argv) == 5:
+        click_inside(sys.argv[2], float(sys.argv[3]), float(sys.argv[4]))
     else:
         raise SystemExit(__doc__)
