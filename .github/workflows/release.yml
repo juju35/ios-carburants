@@ -26,8 +26,7 @@ concurrency:
 jobs:
   release:
     runs-on: xcode-27
-    env:
-      ASC_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+    # The App Store Connect key only reaches the upload step: not brew, xcodegen or third-party actions.
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -36,12 +35,15 @@ jobs:
 
       - name: Read version
         id: version
+        env:
+          HAS_KEY: ${{ secrets.APP_STORE_CONNECT_KEY != '' }}
         run: |
           VERSION="$(sed -n 's/^ *MARKETING_VERSION: "\(.*\)"$/\1/p' project.yml)"
           test -n "$VERSION"
           grep -q "^## $VERSION$" CHANGELOG.md || { echo "::error::No CHANGELOG.md section for $VERSION"; exit 1; }
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "build=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+          if [ "$HAS_KEY" = "true" ]; then echo "upload=true" >> "$GITHUB_OUTPUT"; else echo "upload=false" >> "$GITHUB_OUTPUT"; fi
           if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
@@ -69,7 +71,7 @@ jobs:
 
       - name: Publish release
         if: steps.version.outputs.exists == 'false'
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: v${{ steps.version.outputs.version }}
@@ -79,8 +81,9 @@ jobs:
           make_latest: true
 
       - name: Upload to App Store Connect
-        if: steps.version.outputs.exists == 'false' && env.ASC_KEY != ''
+        if: steps.version.outputs.exists == 'false' && steps.version.outputs.upload == 'true'
         env:
+          ASC_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
           KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
@@ -91,7 +94,9 @@ jobs:
             exit 1
           fi
           key="$RUNNER_TEMP/AuthKey_$KEY_ID.p8"
-          printf '%s\n' "$ASC_KEY" > "$key"
+          # Readable by this user only, and gone when the step ends, whatever happens.
+          trap 'rm -f "$key"' EXIT
+          (umask 077 && printf '%s\n' "$ASC_KEY" > "$key")
           auth=(-allowProvisioningUpdates -authenticationKeyPath "$key"
                 -authenticationKeyID "$KEY_ID" -authenticationKeyIssuerID "$ISSUER_ID")
 
@@ -112,5 +117,5 @@ jobs:
           echo "::notice::Build ${{ steps.version.outputs.build }} of ${{ steps.version.outputs.version }} sent to App Store Connect (TestFlight after processing)"
 
       - name: No App Store Connect key
-        if: steps.version.outputs.exists == 'false' && env.ASC_KEY == ''
+        if: steps.version.outputs.exists == 'false' && steps.version.outputs.upload != 'true'
         run: echo "::warning::No App Store Connect key in the secrets, GitHub release only (nothing sent to TestFlight)"
