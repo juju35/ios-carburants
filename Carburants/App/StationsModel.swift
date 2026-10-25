@@ -31,6 +31,8 @@ final class StationsModel {
 
     @ObservationIgnored private let preferences = Preferences.shared
     @ObservationIgnored private var fetchedAt: CLLocation?
+    /// Where the stations on screen were searched (the snapshot is saved under it).
+    @ObservationIgnored private var listCoordinate: CLLocationCoordinate2D?
     @ObservationIgnored private var fetchTask: Task<Void, Never>?
     @ObservationIgnored private var started = false
 
@@ -57,6 +59,7 @@ final class StationsModel {
             stations = snapshot.stations
             radiusKm = snapshot.radiusKm
             updatedAt = snapshot.date
+            listCoordinate = CLLocationCoordinate2D(latitude: snapshot.latitude, longitude: snapshot.longitude)
         }
         location.onUpdate = { [weak self] location in self?.locationChanged(location) }
     }
@@ -169,6 +172,7 @@ final class StationsModel {
             )
             guard !Task.isCancelled else { return }
             stations = result.stations
+            listCoordinate = coordinate
             radiusKm = result.radiusKm
             updatedAt = .now
             phase = .idle
@@ -185,13 +189,21 @@ final class StationsModel {
         }
     }
 
-    /// Brands, names and logos of the first stations, then one redraw.
+    /// Brands, names and logos of the first stations, then one redraw. The lookups can take long: by then a newer
+    /// search may have replaced the list, so only names, brands and logos are copied, never prices or distances.
     private func enrich() async {
         let shown = Array(visible.prefix(20))
         guard !shown.isEmpty else { return }
         if let updated = await StationRepository.shared.enrich(shown) {
-            stations = stations?.map { updated[$0.id] ?? $0 }
-            if let coordinate = fetchedAt?.coordinate { saveSnapshot(at: coordinate) }
+            stations = stations?.map { station in
+                guard let found = updated[station.id] else { return station }
+                var station = station
+                station.name = found.name
+                station.brand = found.brand
+                station.logoURL = found.logoURL
+                return station
+            }
+            if let listCoordinate { saveSnapshot(at: listCoordinate) }
         }
         await LogoStore.shared.preload(Array(visible.prefix(20)))
     }
