@@ -11,6 +11,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      testflight:
+        description: Archive and upload this version to App Store Connect again, even if its GitHub release exists (after a failed upload)
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -51,7 +56,7 @@ jobs:
           fi
 
       - name: Generate the project
-        if: steps.version.outputs.exists == 'false'
+        if: steps.version.outputs.exists == 'false' || inputs.testflight
         run: |
           brew install xcodegen xcbeautify
           xcodegen
@@ -81,7 +86,7 @@ jobs:
           make_latest: true
 
       - name: Upload to App Store Connect
-        if: steps.version.outputs.exists == 'false' && steps.version.outputs.upload == 'true'
+        if: (steps.version.outputs.exists == 'false' || inputs.testflight) && steps.version.outputs.upload == 'true'
         env:
           ASC_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
           KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}

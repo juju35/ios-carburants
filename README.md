@@ -112,7 +112,7 @@ list and map side by side in the book pose. In the Simulator, fold the iPhone Du
 | --- | --- |
 | Lint | pre-commit (whitespace, YAML/JSON, Ruff for `scripts/`, jscpd duplication), SwiftLint `--strict` with annotations on pull requests |
 | Build | On the `xcode-27` runner with Xcode 27.1: XcodeGen, simulator build of the app and its widget (no signing), CarburantsKit tests; unused declarations and imports (SwiftLint analyzer), blocking, as annotations |
-| Release | On `main`, when `MARKETING_VERSION` in `project.yml` has no tag yet: GitHub release `vX.Y.Z` with the notes of its `CHANGELOG.md` section and a simulator build; archive signed by Xcode and sent to App Store Connect (TestFlight) when the App Store Connect key is set. Build number: commit count |
+| Release | On `main`, when `MARKETING_VERSION` in `project.yml` has no tag yet: GitHub release `vX.Y.Z` with the notes of its `CHANGELOG.md` section and a simulator build; archive signed by Xcode and sent to App Store Connect (TestFlight) when the App Store Connect key is set. Build number: commit count. After a failed upload, run it by hand with *testflight* to upload the same version again |
 | Screenshots | When the app changes: App Store screenshots (iPhone 6.9", iPad 13") and the README's copies from the demo mode, committed when they change |
 | Update release notes | Rewrites a release's notes from `CHANGELOG.md` (input `tag`) |
 | Clean up merged branches | Deletes merged branches after each pull request and weekly |
