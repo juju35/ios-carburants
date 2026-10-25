@@ -190,7 +190,12 @@ final class StationsModel {
             updatedAt = .now
             phase = .idle
             fetchTask = nil
-            preferences.lastLocation = .init(latitude: coordinate.latitude, longitude: coordinate.longitude, date: .now)
+            // Kept for the widget at about 100 m, like what the search sends.
+            preferences.lastLocation = .init(
+                latitude: (coordinate.latitude * 1000).rounded() / 1000,
+                longitude: (coordinate.longitude * 1000).rounded() / 1000,
+                date: .now
+            )
             saveSnapshot(at: coordinate)
             WidgetCenter.shared.reloadAllTimelines()
             await enrich()

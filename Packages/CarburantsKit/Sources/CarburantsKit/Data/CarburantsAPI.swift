@@ -28,7 +28,9 @@ public enum CarburantsAPI {
         }
     }
 
-    private static func coordinate(_ value: Double) -> String { String(format: "%.6f", value) }
+    /// Three decimals, about 100 m: enough to find the stations around, and no more of the user's position than that.
+    /// Distances are still worked out on the device from the exact position.
+    private static func coordinate(_ value: Double) -> String { String(format: "%.3f", value) }
 
     private static func fetch(where filter: String, orderBy: String) async throws -> Data {
         try await HTTP.get(HTTP.url(records, ["where": filter, "order_by": orderBy, "limit": String(maxResults)]))
