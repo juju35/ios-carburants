@@ -27,7 +27,21 @@ public final class LogoStore: @unchecked Sendable {
         return dir
     }()
 
-    private init() {}
+    private init() {
+        pruneOldFiles()
+    }
+
+    /// Logos downloaded over 90 days ago go: a brand still in use is downloaded again, the others no longer pile up.
+    private func pruneOldFiles() {
+        let limit = Date().addingTimeInterval(-90 * 24 * 3600)
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: [.contentModificationDateKey]
+        )) ?? []
+        for file in files {
+            let modified = try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+            if let modified, modified < limit { try? FileManager.default.removeItem(at: file) }
+        }
+    }
 
     public func artwork(for station: Station) -> Artwork {
         if let logo = shipped.find(station.brand, station.name) { return .logo(logo.image, dark: logo.dark) }

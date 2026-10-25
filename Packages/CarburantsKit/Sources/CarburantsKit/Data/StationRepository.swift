@@ -12,6 +12,7 @@ public actor StationRepository {
     private static let namesWait: Duration = .milliseconds(2500)
     // Missing brand or logo: looked up again after a week.
     private static let retryInterval: TimeInterval = 7 * 24 * 3600
+    private static let maxBrands = 2_000
     private static let genericNames: Set<String> = [
         "station", "station service", "stationservice", "carburant", "carburants", "essence", "fuel",
     ]
@@ -122,6 +123,11 @@ public actor StationRepository {
         for station in todo {
             let tags = found[station.id]
             brands[station.id] = BrandInfo(brand: tags?.brand, osmName: tags?.name, wikidata: tags?.wikidata, checkedAt: now)
+        }
+        // The file is read whole, by the widget too: only the stations looked up last are kept.
+        if brands.count > Self.maxBrands {
+            let kept = brands.sorted { $0.value.checkedAt > $1.value.checkedAt }.prefix(Self.maxBrands)
+            brands = Dictionary(uniqueKeysWithValues: kept.map { ($0.key, $0.value) })
         }
         SharedStorage.writeJSON(brands, to: "brands.json")
     }
