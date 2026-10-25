@@ -1,7 +1,8 @@
 name: Clean up merged branches
 
 # Deletes the branches whose pull request was merged: right after a pull request is closed,
-# and once a week for leftovers. Branches with an open pull request or never merged are kept.
+# and once a week for leftovers. Branches with an open pull request, never merged, or with commits after their
+# merge are kept.
 on:
   pull_request:
     types: [closed]
@@ -24,13 +25,21 @@ jobs:
         run: |
           owner="${REPO%%/*}"
           default=$(gh api "repos/$REPO" --jq .default_branch)
-          for branch in $(gh api "repos/$REPO/branches" --paginate --jq '.[].name'); do
+          gh api "repos/$REPO/branches" --paginate --jq '.[] | "\(.name) \(.commit.sha)"' |
+          while read -r branch tip; do
             [ "$branch" = "$default" ] && continue
             open=$(gh api "repos/$REPO/pulls?state=open&head=$owner:$branch" --jq length)
-            merged=$(gh api "repos/$REPO/pulls?state=closed&head=$owner:$branch" --jq '[.[] | select(.merged_at)] | length')
+            # Merged as it stands: a merged pull request whose head is the branch's current tip. A branch that got
+            # new commits after its merge is kept.
+            merged=$(gh api "repos/$REPO/pulls?state=closed&head=$owner:$branch" \
+              --jq "[.[] | select(.merged_at and .head.sha == \"$tip\")] | length")
             if [ "$open" = "0" ] && [ "$merged" != "0" ]; then
-              gh api -X DELETE "repos/$REPO/git/refs/heads/$branch" >/dev/null && echo "Deleted $branch" || echo "::warning::Could not delete $branch"
+              if gh api -X DELETE "repos/$REPO/git/refs/heads/$branch" >/dev/null; then
+                echo "Deleted $branch"
+              else
+                echo "::warning::Could not delete $branch"
+              fi
             else
-              echo "Kept $branch (open PRs: $open, merged PRs: $merged)"
+              echo "Kept $branch (open PRs: $open, merged at its tip: $merged)"
             fi
           done
