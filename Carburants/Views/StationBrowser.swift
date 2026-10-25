@@ -181,10 +181,14 @@ struct StationRow: View {
                     PriceText(best.price)
                         .foregroundStyle(cheapest ? .green : .primary)
                     if fuels.count > 1 { FuelBadge(best.fuel) }
-                } else {
+                } else if station.inShortage(fuels) {
                     Text("Rupture")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.red)
+                } else {
+                    Text("Prix indisponible")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
             }
         }

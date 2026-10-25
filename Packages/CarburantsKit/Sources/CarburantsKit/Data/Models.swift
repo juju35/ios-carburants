@@ -171,6 +171,11 @@ public struct Station: Codable, Hashable, Identifiable, Sendable {
         return price.price
     }
 
+    /// In a declared shortage of one of `list` (a fuel kept after its shortage ended has no price, but is no shortage).
+    public func inShortage(_ list: [Fuel]) -> Bool {
+        list.contains { sells($0) && fuels[$0]?.rupture != nil }
+    }
+
     /// Cheapest in-stock price among `list`, with its fuel.
     public func best(_ list: [Fuel]) -> (fuel: Fuel, price: Double)? {
         list.compactMap { fuel in price(fuel).map { (fuel: fuel, price: $0) } }.min { $0.price < $1.price }

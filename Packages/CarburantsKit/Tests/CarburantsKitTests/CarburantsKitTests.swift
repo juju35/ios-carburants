@@ -25,6 +25,8 @@ final class ParsingTests: XCTestCase {
         XCTAssertFalse(station.fuels[.e85]?.available ?? true)
 
         XCTAssertFalse(station.sells(.gplc))
+        XCTAssertTrue(station.inShortage([.e10]))
+        XCTAssertFalse(station.inShortage([.e85]), "ended shortage: no price, but no shortage")
         XCTAssertTrue(station.automate24)
         XCTAssertEqual(station.services, ["Boutique alimentaire", "Gonflage"])
         XCTAssertEqual(station.hours.map(\.day), [1, 7])

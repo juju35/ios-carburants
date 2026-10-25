@@ -202,7 +202,7 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
 
     /// "1,689 €" with one fuel; "Gazole 1,689 €" with several.
     private func priceLine(_ station: Station, fuels: [Fuel]) -> String {
-        guard let best = station.best(fuels) else { return station.sellsAny(fuels) ? "Rupture" : "Prix indisponible" }
+        guard let best = station.best(fuels) else { return station.inShortage(fuels) ? "Rupture" : "Prix indisponible" }
         return fuels.count > 1 ? "\(best.fuel.short) \(Format.price(best.price))" : Format.price(best.price)
     }
 
@@ -211,8 +211,10 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
             let value = station.fuels[fuel]
             let detail: String = if let price = station.price(fuel) {
                 value?.updated.map { "\(Format.price(price)) · \(Format.ago($0))" } ?? Format.price(price)
-            } else {
+            } else if value?.rupture != nil {
                 "Rupture"
+            } else {
+                "Prix indisponible"
             }
             return CPInformationItem(title: model.fuels.contains(fuel) ? "\(fuel.label) ★" : fuel.label, detail: detail)
         }

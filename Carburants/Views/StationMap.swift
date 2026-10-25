@@ -74,7 +74,7 @@ struct PriceTag: View {
 
     private var priceText: String {
         if let best = station.best(fuels) { return Format.priceNumber(best.price) }
-        return station.sellsAny(fuels) ? "Rupture" : "–"
+        return station.inShortage(fuels) ? "Rupture" : "–"
     }
 }
 
