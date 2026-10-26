@@ -33,7 +33,11 @@ public enum CarburantsAPI {
     private static func coordinate(_ value: Double) -> String { String(format: "%.3f", value) }
 
     private static func fetch(where filter: String, orderBy: String) async throws -> Data {
-        try await HTTP.get(HTTP.url(records, ["where": filter, "order_by": orderBy, "limit": String(maxResults)]))
+        // Prices change every 10 minutes: always fetch fresh, never a cached copy.
+        try await HTTP.get(
+            HTTP.url(records, ["where": filter, "order_by": orderBy, "limit": String(maxResults)]),
+            cachePolicy: .reloadIgnoringLocalCacheData
+        )
     }
 
     /// The stations of one API response.

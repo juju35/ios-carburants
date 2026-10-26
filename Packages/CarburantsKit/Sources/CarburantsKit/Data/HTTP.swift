@@ -15,7 +15,6 @@ enum HTTP {
     private static let session: URLSession = {
         let config = URLSessionConfiguration.default
         config.httpAdditionalHeaders = ["User-Agent": userAgent]
-        config.requestCachePolicy = .reloadIgnoringLocalCacheData
         return URLSession(configuration: config)
     }()
 
@@ -35,9 +34,12 @@ enum HTTP {
         URL(string: base + "?" + query(params))!
     }
 
-    static func get(_ url: URL, timeout: TimeInterval = 15) async throws -> Data {
+    static func get(
+        _ url: URL, timeout: TimeInterval = 15, cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy
+    ) async throws -> Data {
         var request = URLRequest(url: url)
         request.timeoutInterval = timeout
+        request.cachePolicy = cachePolicy
         return try await send(request)
     }
 
