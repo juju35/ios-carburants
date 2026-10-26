@@ -8,7 +8,7 @@ The iOS counterpart of [aaos-carburants](https://github.com/juju35/aaos-carburan
 
 - **Map + list**, as in Plans: each station is a price tag on the map (cheapest in green) and a row in a sheet
   you drag up and down; on a regular width (iPhone Duo unfolded, iPad) the list becomes a floating side panel;
-  iPhone Duo half folded, the map and the list each take one side of the fold
+  iPhone Duo half folded, the map and the list each take one side of the fold.
   Split View and several windows work, all on the same data
 - **Station card**: logo, distance, opening status, big *Itinéraire* button (Plans; long press for Google Maps or
   Waze, Plans when they are not installed), price and freshness of your fuels, the other fuels, shortages, hours of the week, services
