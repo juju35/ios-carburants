@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0
+
+### Fixes
+- README: fixed two sentences that ran together without a separator in the "Map + list" bullet
+
 ## 1.1.0
 
 ### New
