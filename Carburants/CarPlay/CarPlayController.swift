@@ -14,7 +14,7 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
 
     private let mapTemplate = CPPointOfInterestTemplate(title: "À proximité", pointsOfInterest: [], selectedIndex: NSNotFound)
     private let listTemplate = CPListTemplate(title: "Stations", sections: [])
-    private let fuelTemplate = CPListTemplate(title: "Carburants", sections: [])
+    private let fuelTemplate = CPListTemplate(title: "Réglages", sections: [])
 
     // The point-of-interest template shows at most 12 places.
     private static let maxPoints = 12
@@ -33,6 +33,7 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
     private var listStatus: [String]?
     private var listSort: StationOrder?
     private var pickerFuels: [Fuel]?
+    private var pickerNavigationApp: NavigationApp?
     /// The place the driver opened on the map, kept selected across rebuilds.
     private var selectedID: Station.ID?
     /// Rendered logos and badges, by station or fuel; emptied when downloaded logos arrive.
@@ -54,8 +55,8 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         mapTemplate.tabImage = UIImage(systemName: "map.fill")
         listTemplate.tabTitle = "Liste"
         listTemplate.tabImage = UIImage(systemName: "list.bullet")
-        fuelTemplate.tabTitle = "Carburants"
-        fuelTemplate.tabImage = UIImage(systemName: "fuelpump.fill")
+        fuelTemplate.tabTitle = "Réglages"
+        fuelTemplate.tabImage = UIImage(systemName: "gearshape.fill")
 
         let tabs = CPTabBarTemplate(templates: [mapTemplate, listTemplate, fuelTemplate])
         interface.setRootTemplate(tabs, animated: false, completion: nil)
@@ -129,11 +130,15 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
             listTemplate.trailingNavigationBarButtons = [button]
         }
 
-        if fuels != pickerFuels {
+        let currentNavApp = model.navigationApp
+        if fuels != pickerFuels || currentNavApp != pickerNavigationApp {
             pickerFuels = fuels
-            let items = Fuel.allCases.map { fuelItem($0, chosen: fuels.contains($0)) }
+            pickerNavigationApp = currentNavApp
+            let fuelItems = Fuel.allCases.map { fuelItem($0, chosen: fuels.contains($0)) }
+            let navItems = availableNavigationApps().map { navigationItem($0, chosen: currentNavApp == $0) }
             fuelTemplate.updateSections([
-                CPListSection(items: items, header: "Carburants de votre véhicule", sectionIndexTitle: nil),
+                CPListSection(items: fuelItems, header: "Carburants de votre véhicule", sectionIndexTitle: nil),
+                CPListSection(items: navItems, header: "Application de navigation", sectionIndexTitle: nil),
             ])
         }
     }
@@ -148,6 +153,21 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         )
         item.handler = { [weak self] _, completion in
             self?.model.toggleFuel(fuel)
+            completion()
+        }
+        return item
+    }
+
+    private func navigationItem(_ app: NavigationApp, chosen: Bool) -> CPListItem {
+        let item = CPListItem(
+            text: app.title,
+            detailText: nil,
+            image: UIImage(systemName: app.symbol),
+            accessoryImage: chosen ? UIImage(systemName: "checkmark") : nil,
+            accessoryType: .none
+        )
+        item.handler = { [weak self] _, completion in
+            self?.model.setNavigationApp(app)
             completion()
         }
         return item
@@ -246,10 +266,64 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         interface.pushTemplate(template, animated: true, completion: nil)
     }
 
-    /// Hands the destination to Plans, which takes over the CarPlay screen.
+    /// Prompts the driver to choose which navigation app to open (or opens the single one), then launches it.
     private func navigate(to station: Station) {
-        guard let url = URL(string: "maps://?daddr=\(station.latitude),\(station.longitude)&dirflg=d") else { return }
-        scene?.open(url, options: nil, completionHandler: nil)
+        let apps = availableNavigationApps()
+        if apps.count <= 1 {
+            openNavigationApp(apps.first ?? .appleMaps, for: station)
+            return
+        }
+
+        var actions: [CPAlertAction] = apps.map { app in
+            CPAlertAction(title: app.title, style: .default) { [weak self] _ in
+                self?.model.setNavigationApp(app)
+                self?.openNavigationApp(app, for: station)
+            }
+        }
+        actions.append(CPAlertAction(title: "Annuler", style: .cancel) { [weak self] _ in
+            self?.interface.dismissTemplate(animated: true, completion: nil)
+        })
+
+        let actionSheet = CPActionSheetTemplate(
+            title: "Itinéraire",
+            message: station.name,
+            actions: actions
+        )
+        interface.presentTemplate(actionSheet, animated: true, completion: nil)
+    }
+
+    private func availableNavigationApps() -> [NavigationApp] {
+        var apps: [NavigationApp] = [.appleMaps]
+        if let gmaps = URL(string: "comgooglemaps://"), UIApplication.shared.canOpenURL(gmaps) {
+            apps.append(.googleMaps)
+        }
+        if let waze = URL(string: "waze://"), UIApplication.shared.canOpenURL(waze) {
+            apps.append(.waze)
+        }
+        if !apps.contains(model.navigationApp) {
+            apps.append(model.navigationApp)
+        }
+        return apps
+    }
+
+    private func openNavigationApp(_ app: NavigationApp, for station: Station) {
+        let url: URL
+        switch app {
+        case .appleMaps:
+            url = URL(string: "maps://?daddr=\(station.latitude),\(station.longitude)&dirflg=d")!
+        case .googleMaps:
+            url = URL(string: "comgooglemaps://?daddr=\(station.latitude),\(station.longitude)&directionsmode=driving")!
+        case .waze:
+            url = URL(string: "waze://?ll=\(station.latitude),\(station.longitude)&navigate=yes")!
+        }
+
+        if interface.presentedTemplate != nil {
+            interface.dismissTemplate(animated: true) { [weak self] _, _ in
+                self?.scene?.open(url, options: nil, completionHandler: nil)
+            }
+        } else {
+            scene?.open(url, options: nil, completionHandler: nil)
+        }
     }
 
     // MARK: - Images
@@ -278,7 +352,8 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         _ template: CPPointOfInterestTemplate, didSelectPointOfInterest pointOfInterest: CPPointOfInterest
     ) {
         let id = pointOfInterest.userInfo as? Station.ID
-        // CarPlay calls its delegates on the main thread.
-        MainActor.assumeIsolated { selectedID = id }
+        Task { @MainActor in
+            self.selectedID = id
+        }
     }
 }
