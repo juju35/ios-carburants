@@ -1,5 +1,50 @@
 import Foundation
 
+/// Preferred app for driving directions.
+public enum NavigationApp: String, CaseIterable, Identifiable, Codable, Sendable {
+    case appleMaps = "apple_maps"
+    case googleMaps = "google_maps"
+    case waze = "waze"
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .appleMaps: "Plans"
+        case .googleMaps: "Google Maps"
+        case .waze: "Waze"
+        }
+    }
+
+    public var symbol: String {
+        switch self {
+        case .appleMaps: "map"
+        case .googleMaps, .waze: "arrow.triangle.turn.up.right.diamond"
+        }
+    }
+
+    public func url(for station: Station) -> URL {
+        switch self {
+        case .appleMaps:
+            var components = URLComponents(string: "https://maps.apple.com/")!
+            components.queryItems = [
+                URLQueryItem(name: "daddr", value: "\(station.latitude),\(station.longitude)"),
+                URLQueryItem(name: "q", value: station.name),
+                URLQueryItem(name: "dirflg", value: "d"),
+            ]
+            return components.url!
+        case .googleMaps:
+            let lat = station.latitude
+            let lon = station.longitude
+            return URL(string: "comgooglemaps://?daddr=\(lat),\(lon)&directionsmode=driving")!
+        case .waze:
+            let lat = station.latitude
+            let lon = station.longitude
+            return URL(string: "waze://?ll=\(lat),\(lon)&navigate=yes")!
+        }
+    }
+}
+
 /// Choices kept between drives, shared with the widget through the App Group.
 public final class Preferences: @unchecked Sendable {
     public static let shared = Preferences()
@@ -31,6 +76,11 @@ public final class Preferences: @unchecked Sendable {
     public var sort: StationOrder {
         get { store.string(forKey: "sort").flatMap(StationOrder.init(rawValue:)) ?? .price }
         set { store.set(newValue.rawValue, forKey: "sort") }
+    }
+
+    public var navigationApp: NavigationApp {
+        get { store.string(forKey: "navigationApp").flatMap(NavigationApp.init(rawValue:)) ?? .appleMaps }
+        set { store.set(newValue.rawValue, forKey: "navigationApp") }
     }
 
     /// Where the last search was made: the widget falls back on it when it has no location of its own.

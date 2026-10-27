@@ -4,7 +4,7 @@ import CoreLocation
 import Observation
 import WidgetKit
 
-/// Stations around the phone, shared by every window (iPhone, iPhone Duo in Split View, iPad) and CarPlay.
+/// Stations around the phone or a selected town, shared by every window and CarPlay.
 @MainActor
 @Observable
 final class StationsModel {
@@ -19,6 +19,7 @@ final class StationsModel {
 
     private(set) var fuels: [Fuel]
     private(set) var sort: StationOrder
+    private(set) var navigationApp: NavigationApp
     /// nil until a first search returns.
     private(set) var stations: [Station]?
     private(set) var radiusKm = StationRepository.radiusKm
@@ -28,6 +29,15 @@ final class StationsModel {
     var selectedID: Station.ID?
     /// The fuel picker, opened from the list's toolbar (and by the demo mode).
     var showsFuelPicker = false
+
+    /// Filter query typed in the search bar.
+    var filterText: String = ""
+    /// Whether the user is currently typing in the search bar.
+    var isSearching = false
+
+    /// When set, stations are searched around this town rather than user's GPS position.
+    private(set) var customTownName: String?
+    private(set) var customLocation: CLLocation?
 
     @ObservationIgnored private let preferences = Preferences.shared
     @ObservationIgnored private var fetchedAt: CLLocation?
@@ -48,12 +58,14 @@ final class StationsModel {
             Opening.clock = { Opening.nineFortyOne }
             fuels = [.gazole, .e10]
             sort = .price
+            navigationApp = .appleMaps
             stations = Station.samples
             updatedAt = .now.addingTimeInterval(-4 * 60)
             return
         }
         fuels = preferences.fuels
         sort = preferences.sort
+        navigationApp = preferences.navigationApp
         // Last list for an instant start, when recent and for the same fuels; distances refresh with the next search.
         if let snapshot = Snapshot.load(), snapshot.fuels == preferences.fuels, Date().timeIntervalSince(snapshot.date) < 30 * 60 {
             stations = snapshot.stations
@@ -66,7 +78,21 @@ final class StationsModel {
 
     // MARK: - Derived
 
-    var visible: [Station] { StationSort.sorted(stations ?? [], by: sort, fuels: fuels) }
+    var visible: [Station] {
+        let sorted = StationSort.sorted(stations ?? [], by: sort, fuels: fuels)
+        let query = filterText.trimmingCharacters(in: .whitespacesAndNewlines).folding(options: .diacriticInsensitive, locale: .current)
+        guard !query.isEmpty else { return sorted }
+        return sorted.filter { station in
+            let city = station.city.folding(options: .diacriticInsensitive, locale: .current)
+            let address = station.address.folding(options: .diacriticInsensitive, locale: .current)
+            let name = station.name.folding(options: .diacriticInsensitive, locale: .current)
+            let postcode = station.postcode
+            return city.localizedCaseInsensitiveContains(query)
+                || address.localizedCaseInsensitiveContains(query)
+                || name.localizedCaseInsensitiveContains(query)
+                || postcode.contains(query)
+        }
+    }
 
     var cheapestPrice: Double? { visible.compactMap { $0.best(fuels)?.price }.min() }
 
@@ -111,7 +137,11 @@ final class StationsModel {
     func resume() {
         guard !Demo.isOn else { return }
         location.start()
-        if let current = location.location, isFresh(current), isStale(current), fetchTask == nil { refresh() }
+        if customLocation != nil {
+            if let updatedAt, Date().timeIntervalSince(updatedAt) > Self.refetchInterval, fetchTask == nil { refresh() }
+        } else if let current = location.location, isFresh(current), isStale(current), fetchTask == nil {
+            refresh()
+        }
     }
 
     func setFuels(_ newValue: [Fuel]) {
@@ -130,11 +160,47 @@ final class StationsModel {
         sort = newValue
         preferences.sort = newValue
         Task { await enrich() }
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    func setNavigationApp(_ newValue: NavigationApp) {
+        guard newValue != navigationApp else { return }
+        navigationApp = newValue
+        preferences.navigationApp = newValue
     }
 
     func toggleFuel(_ fuel: Fuel) {
         let next = fuels.contains(fuel) ? fuels.filter { $0 != fuel } : Fuel.allCases.filter { fuels.contains($0) || $0 == fuel }
         setFuels(next)
+    }
+
+    /// Searches stations around a selected town / coordinates.
+    func searchTown(name: String, coordinate: CLLocationCoordinate2D) {
+        isSearching = false
+        customTownName = name
+        let targetLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        customLocation = targetLocation
+        filterText = ""
+        stations = nil
+        selectedID = nil
+        fetchedAt = nil
+        fetchTask?.cancel()
+        let fuels = fuels
+        let task = Task { await self.fetch(around: targetLocation, fuels: fuels) }
+        fetchTask = task
+    }
+
+    /// Resets search to the user's current GPS location.
+    func resetToCurrentLocation() {
+        isSearching = false
+        guard customTownName != nil || customLocation != nil else { return }
+        customTownName = nil
+        customLocation = nil
+        filterText = ""
+        stations = nil
+        selectedID = nil
+        fetchedAt = nil
+        refresh()
     }
 
     /// `carburants://station/<id>`, from the widget.
@@ -143,13 +209,14 @@ final class StationsModel {
         selectedID = id
     }
 
-    /// Starts a search around the current position; await the task for pull to refresh.
+    /// Starts a search around the active position (custom town or GPS); await the task for pull to refresh.
     @discardableResult
     func refresh() -> Task<Void, Never>? {
-        guard let current = location.location else { return nil }
+        let target = customLocation ?? location.location
+        guard let target else { return nil }
         fetchTask?.cancel()
         let fuels = fuels
-        let task = Task { await self.fetch(around: current, fuels: fuels) }
+        let task = Task { await self.fetch(around: target, fuels: fuels) }
         fetchTask = task
         return task
     }
@@ -157,6 +224,8 @@ final class StationsModel {
     // MARK: - Loading
 
     private func locationChanged(_ location: CLLocation) {
+        // When a custom town search is active, GPS movement doesn't override it.
+        guard customLocation == nil else { return }
         guard isFresh(location) else { return }
         if fetchTask != nil {
             // A search is running from an earlier position: start again when this one is far from it.
@@ -190,14 +259,16 @@ final class StationsModel {
             updatedAt = .now
             phase = .idle
             fetchTask = nil
-            // Kept for the widget at about 100 m, like what the search sends.
-            preferences.lastLocation = .init(
-                latitude: (coordinate.latitude * 1000).rounded() / 1000,
-                longitude: (coordinate.longitude * 1000).rounded() / 1000,
-                date: .now
-            )
+            // Only update widget/lastLocation if searching from actual GPS location
+            if customLocation == nil {
+                preferences.lastLocation = .init(
+                    latitude: (coordinate.latitude * 1000).rounded() / 1000,
+                    longitude: (coordinate.longitude * 1000).rounded() / 1000,
+                    date: .now
+                )
+                WidgetCenter.shared.reloadAllTimelines()
+            }
             saveSnapshot(at: coordinate)
-            WidgetCenter.shared.reloadAllTimelines()
             await enrich()
         } catch {
             guard !Task.isCancelled else { return }

@@ -1,40 +1,96 @@
 import CarburantsKit
+import MapKit
 import SwiftUI
 
-/// "Itinéraire" in Plans; a long press offers Google Maps and Waze (Plans when they are not installed:
-/// canOpenURL is deprecated since iOS 27, so the app tries and falls back).
+/// "Itinéraire" button; opens user's preferred navigation app on click (Plans, Google Maps, Waze),
+/// with long-press menu to choose an alternative app or set default.
 struct DirectionsButton: View {
     let station: Station
     @Environment(\.openURL) private var openURL
+    @State private var travelTime: TimeInterval?
+    @State private var defaultApp = Preferences.shared.navigationApp
 
     var body: some View {
         Menu {
-            ForEach(Directions.apps(station), id: \.name) { app in
-                Button { open(app.url) } label: { Label(app.name, systemImage: app.symbol) }
+            ForEach(NavigationApp.allCases) { app in
+                Button { open(app.url(for: station)) } label: {
+                    Label(app.title, systemImage: app.symbol)
+                }
             }
-        } label: {
-            Label {
-                VStack(spacing: 0) {
-                    Text("Itinéraire").font(.headline)
-                    if let distance = station.distanceKm {
-                        Text(Format.distance(distance)).font(.caption)
+
+            Divider()
+
+            Section("Application par défaut") {
+                ForEach(NavigationApp.allCases) { app in
+                    Button {
+                        defaultApp = app
+                        Preferences.shared.navigationApp = app
+                    } label: {
+                        if defaultApp == app {
+                            Label(app.title, systemImage: "checkmark")
+                        } else {
+                            Text(app.title)
+                        }
                     }
                 }
-            } icon: {
-                Image(systemName: "car.fill")
             }
-            .frame(maxWidth: .infinity)
+        } label: {
+            HStack(spacing: 8) {
+                Spacer(minLength: 0)
+                Image(systemName: "car.fill")
+                    .font(.title3)
+                VStack(alignment: .center, spacing: 2) {
+                    Text("Itinéraire")
+                        .font(.headline)
+                    if !subtitle.isEmpty {
+                        Text(subtitle)
+                            .font(.caption)
+                    }
+                }
+                .multilineTextAlignment(.center)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, 6)
         } primaryAction: {
-            openURL(Directions.appleMaps(station))
+            open(defaultApp.url(for: station))
         }
         .buttonStyle(.borderedProminent)
         .buttonBorderShape(.roundedRectangle(radius: 12))
         .controlSize(.large)
+        .task(id: station.id) {
+            defaultApp = Preferences.shared.navigationApp
+            travelTime = nil
+            await loadTravelTime()
+        }
+    }
+
+    private var subtitle: String {
+        var parts: [String] = []
+        if let travelTime {
+            parts.append(Format.duration(travelTime))
+        }
+        if let distance = station.distanceKm {
+            parts.append(Format.distance(distance))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func loadTravelTime() async {
+        let request = MKDirections.Request()
+        request.source = .forCurrentLocation()
+        request.destination = Directions.mapItem(for: station)
+        request.transportType = .automobile
+        let directions = MKDirections(request: request)
+        if let response = try? await directions.calculateETA() {
+            withAnimation(.snappy) {
+                travelTime = response.expectedTravelTime
+            }
+        }
     }
 
     private func open(_ url: URL) {
-        let fallback = Directions.appleMaps(station)
+        let fallback = NavigationApp.appleMaps.url(for: station)
         openURL(url) { accepted in
             if !accepted { openURL(fallback) }
         }
@@ -42,32 +98,17 @@ struct DirectionsButton: View {
 }
 
 enum Directions {
-    struct App {
-        let name: String
-        let symbol: String
-        let url: URL
-    }
-
-    /// Driving directions in Plans (also what CarPlay opens).
-    static func appleMaps(_ station: Station) -> URL {
-        var components = URLComponents(string: "https://maps.apple.com/")!
-        components.queryItems = [
-            URLQueryItem(name: "daddr", value: "\(station.latitude),\(station.longitude)"),
-            URLQueryItem(name: "q", value: station.name),
-            URLQueryItem(name: "dirflg", value: "d"),
-        ]
-        return components.url!
-    }
-
-    static func apps(_ station: Station) -> [App] {
-        let lat = station.latitude
-        let lon = station.longitude
-        return [
-            App(name: "Plans", symbol: "map", url: appleMaps(station)),
-            App(name: "Google Maps", symbol: "arrow.triangle.turn.up.right.diamond",
-                url: URL(string: "comgooglemaps://?daddr=\(lat),\(lon)&directionsmode=driving")!),
-            App(name: "Waze", symbol: "arrow.triangle.turn.up.right.diamond",
-                url: URL(string: "waze://?ll=\(lat),\(lon)&navigate=yes")!),
-        ]
+    static func mapItem(for station: Station) -> MKMapItem {
+        let coordinate = CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude)
+        if #available(iOS 26.0, *) {
+            let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            let item = MKMapItem(location: location, address: nil)
+            item.name = station.name
+            return item
+        } else {
+            let item = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
+            item.name = station.name
+            return item
+        }
     }
 }

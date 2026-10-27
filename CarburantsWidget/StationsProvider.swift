@@ -3,13 +3,12 @@ import CarburantsKit
 import CoreLocation
 import WidgetKit
 
-/// The fuel a widget shows: those chosen in the app, or one in particular.
+/// Fuel selection in widget configuration.
 enum WidgetFuel: String, AppEnum {
-    case mine, gazole, sp95, sp98, e10, e85, gplc
+    case gazole, sp95, sp98, e10, e85, gplc
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Carburant"
     static let caseDisplayRepresentations: [WidgetFuel: DisplayRepresentation] = [
-        .mine: "Mes carburants",
         .gazole: "Gazole",
         .sp95: "SP95",
         .sp98: "SP98",
@@ -18,18 +17,71 @@ enum WidgetFuel: String, AppEnum {
         .gplc: "GPLc",
     ]
 
-    var fuels: [Fuel] {
-        Fuel(rawValue: rawValue).map { [$0] } ?? Preferences.shared.fuels
+    var fuel: Fuel {
+        Fuel(rawValue: rawValue) ?? .gazole
+    }
+}
+
+/// Sorting order in widget configuration.
+enum WidgetSort: String, AppEnum {
+    case app, price, distance
+
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Tri"
+    static let caseDisplayRepresentations: [WidgetSort: DisplayRepresentation] = [
+        .app: "Selon l’application",
+        .price: "Prix le plus bas",
+        .distance: "Distance",
+    ]
+
+    func resolved(fallback: StationOrder) -> StationOrder {
+        switch self {
+        case .app: return fallback
+        case .price: return .price
+        case .distance: return .distance
+        }
     }
 }
 
 struct StationsIntent: WidgetConfigurationIntent {
     static let title: LocalizedStringResource = "Stations à proximité"
     // swiftlint:disable:next unused_declaration - shown by the system in the widget's settings
-    static let description = IntentDescription("Les stations les moins chères autour de vous.")
+    static let description = IntentDescription("Les stations autour de vous, avec leur prix.")
 
-    @Parameter(title: "Carburant", default: .mine)
-    var fuel: WidgetFuel
+    @Parameter(title: "Utiliser mes carburants", default: true)
+    var useAppFuels: Bool
+
+    @Parameter(title: "Carburants")
+    var customFuels: [WidgetFuel]?
+
+    @Parameter(title: "Trier par", default: .app)
+    var sort: WidgetSort
+
+    static var parameterSummary: some ParameterSummary {
+        When(\.$useAppFuels, .equalTo, false) {
+            Summary {
+                \.$useAppFuels
+                \.$customFuels
+                \.$sort
+            }
+        } otherwise: {
+            Summary {
+                \.$useAppFuels
+                \.$sort
+            }
+        }
+    }
+
+    var resolvedFuels: [Fuel] {
+        if useAppFuels {
+            return Preferences.shared.fuels
+        }
+        let list = (customFuels ?? []).map(\.fuel)
+        return list.isEmpty ? Preferences.shared.fuels : list
+    }
+
+    var resolvedSort: StationOrder {
+        sort.resolved(fallback: Preferences.shared.sort)
+    }
 }
 
 struct StationsEntry: TimelineEntry {
@@ -39,38 +91,47 @@ struct StationsEntry: TimelineEntry {
 
     let date: Date
     let fuels: [Fuel]
-    /// Cheapest first.
     let stations: [Station]
+    let order: StationOrder
     let state: State
     /// When the prices were fetched (an older list is shown when offline).
     let updated: Date
 
     /// The same stations, shown from `date` on.
     func at(_ date: Date) -> StationsEntry {
-        StationsEntry(date: date, fuels: fuels, stations: stations, state: state, updated: updated)
+        StationsEntry(date: date, fuels: fuels, stations: stations, order: order, state: state, updated: updated)
     }
 
-    static let sample = StationsEntry(
-        date: .now, fuels: [.gazole],
-        stations: StationSort.sorted(Station.samples, by: .price, fuels: [.gazole]),
-        state: .ready, updated: .now
-    )
+    func isCheapest(price: Double, for fuel: Fuel) -> Bool {
+        guard let lowest = stations.compactMap({ $0.price(fuel) }).min() else { return false }
+        return price <= lowest
+    }
+
+    static let sample: StationsEntry = {
+        let fuels: [Fuel] = [.gazole, .e10]
+        let sort = Preferences.shared.sort
+        return StationsEntry(
+            date: .now, fuels: fuels,
+            stations: StationSort.sorted(Station.samples, by: sort, fuels: fuels),
+            order: sort, state: .ready, updated: .now
+        )
+    }()
 }
 
 struct StationsProvider: AppIntentTimelineProvider {
     // Prices change every 10 minutes at most; WidgetKit spaces reloads out anyway.
     private static let refresh: TimeInterval = 30 * 60
-    private static let maxStations = 8
+    private static let maxStations = 12
 
     func placeholder(in context: Context) -> StationsEntry { .sample }
 
     func snapshot(for configuration: StationsIntent, in context: Context) async -> StationsEntry {
         if context.isPreview { return .sample }
-        return await load(configuration.fuel.fuels)
+        return await load(fuels: configuration.resolvedFuels, sort: configuration.resolvedSort)
     }
 
     func timeline(for configuration: StationsIntent, in context: Context) async -> Timeline<StationsEntry> {
-        let entry = await load(configuration.fuel.fuels)
+        let entry = await load(fuels: configuration.resolvedFuels, sort: configuration.resolvedSort)
         return Timeline(entries: Self.entries(from: entry), policy: .after(.now.addingTimeInterval(Self.refresh)))
     }
 
@@ -90,9 +151,9 @@ struct StationsProvider: AppIntentTimelineProvider {
         return entries
     }
 
-    private func load(_ fuels: [Fuel]) async -> StationsEntry {
+    private func load(fuels: [Fuel], sort: StationOrder) async -> StationsEntry {
         guard let location = currentLocation() else {
-            return StationsEntry(date: .now, fuels: fuels, stations: [], state: .noLocation, updated: .now)
+            return StationsEntry(date: .now, fuels: fuels, stations: [], order: sort, state: .noLocation, updated: .now)
         }
         do {
             // The names file is too big for the extension's memory: names, brands and logos the app found instead.
@@ -108,18 +169,18 @@ struct StationsProvider: AppIntentTimelineProvider {
                 station.logoURL = app.logoURL ?? station.logoURL
                 return station
             }
-            let stations = Array(StationSort.sorted(named, by: .price, fuels: fuels).prefix(Self.maxStations))
+            let stations = Array(StationSort.sorted(named, by: sort, fuels: fuels).prefix(Self.maxStations))
             await LogoStore.shared.preload(stations, timeout: 5)
             WidgetStations.save(stations)
-            return StationsEntry(date: .now, fuels: fuels, stations: stations, state: .ready, updated: .now)
+            return StationsEntry(date: .now, fuels: fuels, stations: stations, order: sort, state: .ready, updated: .now)
         } catch {
             // Offline: the app's last list when it was for these fuels.
             if let snapshot = Snapshot.load(), snapshot.fuels == fuels {
-                let stations = Array(StationSort.sorted(snapshot.stations, by: .price, fuels: fuels).prefix(Self.maxStations))
+                let stations = Array(StationSort.sorted(snapshot.stations, by: sort, fuels: fuels).prefix(Self.maxStations))
                 WidgetStations.save(stations)
-                return StationsEntry(date: .now, fuels: fuels, stations: stations, state: .ready, updated: snapshot.date)
+                return StationsEntry(date: .now, fuels: fuels, stations: stations, order: sort, state: .ready, updated: snapshot.date)
             }
-            return StationsEntry(date: .now, fuels: fuels, stations: [], state: .failed, updated: .now)
+            return StationsEntry(date: .now, fuels: fuels, stations: [], order: sort, state: .failed, updated: .now)
         }
     }
 

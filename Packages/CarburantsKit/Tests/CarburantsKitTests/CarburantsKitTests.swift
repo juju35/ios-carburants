@@ -78,6 +78,10 @@ final class TextTests: XCTestCase {
         XCTAssertEqual(Format.distance(0.847), "850 m")
         XCTAssertEqual(Format.distance(3.42), "3,4 km")
         XCTAssertEqual(Format.distance(12.4), "12 km")
+        XCTAssertEqual(Format.duration(45), "1 min")
+        XCTAssertEqual(Format.duration(480), "8 min")
+        XCTAssertEqual(Format.duration(3600), "1 h")
+        XCTAssertEqual(Format.duration(4320), "1 h 12 min")
         XCTAssertEqual(Format.price(1.749), "1,749 €")
         XCTAssertEqual(Format.fuels([.e10, .sp98]), "E10, SP98")
     }
@@ -108,5 +112,36 @@ final class OpeningTests: XCTestCase {
         var always = station
         always.hours = (1...7).map { DayHours(day: $0, closed: false, ranges: [TimeRange(open: "00:00", close: "23:59")]) }
         XCTAssertEqual(Opening.of(always)?.state, .always)
+    }
+}
+
+final class NavigationAppTests: XCTestCase {
+    private let station = Station(
+        id: 123, address: "1 Rue de la Paix", postcode: "75001", city: "Paris",
+        latitude: 48.8566, longitude: 2.3522, hours: [], fuels: [:]
+    )
+
+    func testAppleMapsURL() {
+        let url = NavigationApp.appleMaps.url(for: station)
+        XCTAssertTrue(url.absoluteString.contains("maps.apple.com"))
+        XCTAssertTrue(url.absoluteString.contains("daddr=48.8566,2.3522"))
+    }
+
+    func testGoogleMapsURL() {
+        let url = NavigationApp.googleMaps.url(for: station)
+        XCTAssertTrue(url.absoluteString.hasPrefix("comgooglemaps://"))
+        XCTAssertTrue(url.absoluteString.contains("daddr=48.8566,2.3522"))
+    }
+
+    func testWazeURL() {
+        let url = NavigationApp.waze.url(for: station)
+        XCTAssertTrue(url.absoluteString.hasPrefix("waze://"))
+        XCTAssertTrue(url.absoluteString.contains("ll=48.8566,2.3522"))
+    }
+
+    func testTitles() {
+        XCTAssertEqual(NavigationApp.appleMaps.title, "Plans")
+        XCTAssertEqual(NavigationApp.googleMaps.title, "Google Maps")
+        XCTAssertEqual(NavigationApp.waze.title, "Waze")
     }
 }

@@ -1,14 +1,20 @@
 import CarburantsKit
 import SwiftUI
 
-/// The fuels your car takes (at least one); the price sort uses the cheapest of them at each station.
+/// Settings: fuels taken by the car, and preferred navigation app for directions.
 struct FuelPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selection: Set<Fuel>
-    private let onDone: ([Fuel]) -> Void
+    @State private var navigationApp: NavigationApp
+    private let onDone: ([Fuel], NavigationApp) -> Void
 
-    init(selection: [Fuel], onDone: @escaping ([Fuel]) -> Void) {
+    init(
+        selection: [Fuel],
+        navigationApp: NavigationApp = Preferences.shared.navigationApp,
+        onDone: @escaping ([Fuel], NavigationApp) -> Void
+    ) {
         self.selection = Set(selection)
+        self._navigationApp = State(initialValue: navigationApp)
         self.onDone = onDone
     }
 
@@ -31,11 +37,26 @@ struct FuelPickerView: View {
                         }
                         .disabled(selection == [fuel])
                     }
+                } header: {
+                    Text("Carburants du véhicule")
                 } footer: {
                     Text("Le tri par prix retient le moins cher de vos carburants dans chaque station. Gardez-en au moins un.")
                 }
+
+                Section {
+                    Picker("Application d’itinéraire", selection: $navigationApp) {
+                        ForEach(NavigationApp.allCases) { app in
+                            Label(app.title, systemImage: app.symbol).tag(app)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                } header: {
+                    Text("Application d’itinéraire")
+                } footer: {
+                    Text("Application lancée en touchant le bouton Itinéraire.")
+                }
             }
-            .navigationTitle("Carburants du véhicule")
+            .navigationTitle("Préférences")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -43,7 +64,7 @@ struct FuelPickerView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("OK") {
-                        onDone(Fuel.allCases.filter(selection.contains))
+                        onDone(Fuel.allCases.filter(selection.contains), navigationApp)
                         dismiss()
                     }
                     .fontWeight(.semibold)
@@ -63,5 +84,5 @@ struct FuelPickerView: View {
 }
 
 #Preview {
-    FuelPickerView(selection: [.gazole]) { _ in }
+    FuelPickerView(selection: [.gazole], navigationApp: .appleMaps) { _, _ in }
 }

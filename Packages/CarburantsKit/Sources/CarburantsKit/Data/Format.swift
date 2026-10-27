@@ -12,6 +12,15 @@ public enum Format {
     /// "1,749 €"
     public static func price(_ value: Double) -> String { "\(priceNumber(value)) €" }
 
+    /// Driving travel time: "8 min", "1 h 12 min", "2 h".
+    public static func duration(_ seconds: TimeInterval) -> String {
+        let minutes = max(1, Int((seconds / 60).rounded()))
+        if minutes < 60 { return "\(minutes) min" }
+        let hours = minutes / 60
+        let remaining = minutes % 60
+        return remaining == 0 ? "\(hours) h" : "\(hours) h \(remaining) min"
+    }
+
     /// "850 m", "3,4 km", "12 km".
     public static func distance(_ km: Double) -> String {
         if km < 0.995 { return "\(Int((km * 100).rounded()) * 10) m" }
