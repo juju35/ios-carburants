@@ -24,23 +24,25 @@ public enum NavigationApp: String, CaseIterable, Identifiable, Codable, Sendable
     }
 
     public func url(for station: Station) -> URL {
+        let fallback = URL(string: "https://maps.apple.com/?daddr=\(station.latitude),\(station.longitude)&dirflg=d")
+            ?? URL(fileURLWithPath: "/")
         switch self {
         case .appleMaps:
-            var components = URLComponents(string: "https://maps.apple.com/")!
-            components.queryItems = [
+            var components = URLComponents(string: "https://maps.apple.com/")
+            components?.queryItems = [
                 URLQueryItem(name: "daddr", value: "\(station.latitude),\(station.longitude)"),
                 URLQueryItem(name: "q", value: station.name),
                 URLQueryItem(name: "dirflg", value: "d"),
             ]
-            return components.url!
+            return components?.url ?? fallback
         case .googleMaps:
             let lat = station.latitude
             let lon = station.longitude
-            return URL(string: "comgooglemaps://?daddr=\(lat),\(lon)&directionsmode=driving")!
+            return URL(string: "comgooglemaps://?daddr=\(lat),\(lon)&directionsmode=driving") ?? fallback
         case .waze:
             let lat = station.latitude
             let lon = station.longitude
-            return URL(string: "waze://?ll=\(lat),\(lon)&navigate=yes")!
+            return URL(string: "waze://?ll=\(lat),\(lon)&navigate=yes") ?? fallback
         }
     }
 }

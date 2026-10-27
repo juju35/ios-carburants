@@ -65,7 +65,13 @@ public struct Opening: Hashable, Sendable {
     public let state: State
     public let text: String
 
-    private static let zone = TimeZone(identifier: "Europe/Paris")!
+    private static let zone = TimeZone(identifier: "Europe/Paris") ?? .current
+    private static let parisCalendar: Calendar = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = zone
+        return cal
+    }()
+
     public static let dayNames = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
     private static let shortDayNames = ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."]
 
@@ -74,16 +80,12 @@ public struct Opening: Hashable, Sendable {
 
     /// 9:41 today, French time: the time of screenshots, to match their status bar.
     public static var nineFortyOne: Date {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = zone
-        return calendar.date(bySettingHour: 9, minute: 41, second: 0, of: .now) ?? .now
+        parisCalendar.date(bySettingHour: 9, minute: 41, second: 0, of: .now) ?? .now
     }
 
     /// 1 = Monday … 7 = Sunday, and minutes since midnight, in French time.
     public static func now(_ date: Date = Opening.clock()) -> (day: Int, minutes: Int) {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = zone
-        let parts = calendar.dateComponents([.weekday, .hour, .minute], from: date)
+        let parts = parisCalendar.dateComponents([.weekday, .hour, .minute], from: date)
         let day = ((parts.weekday ?? 2) + 5) % 7 + 1
         return (day, (parts.hour ?? 0) * 60 + (parts.minute ?? 0))
     }

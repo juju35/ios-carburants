@@ -88,7 +88,7 @@ struct StationDetailView: View {
                     LabeledContent {
                         Text(Self.ranges(day)).monospacedDigit()
                     } label: {
-                        Text(Opening.dayNames[day.day - 1])
+                        Text(Opening.dayNames.indices.contains(day.day - 1) ? Opening.dayNames[day.day - 1] : "Jour \(day.day)")
                     }
                     .fontWeight(day.day == today ? .semibold : .regular)
                 }

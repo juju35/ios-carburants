@@ -17,11 +17,17 @@ final class StationsModel {
 
     let location = LocationProvider()
 
-    private(set) var fuels: [Fuel]
-    private(set) var sort: StationOrder
+    private(set) var fuels: [Fuel] {
+        didSet { recomputeDerivedState() }
+    }
+    private(set) var sort: StationOrder {
+        didSet { recomputeDerivedState() }
+    }
     private(set) var navigationApp: NavigationApp
     /// nil until a first search returns.
-    private(set) var stations: [Station]?
+    private(set) var stations: [Station]? {
+        didSet { recomputeDerivedState() }
+    }
     private(set) var radiusKm = StationRepository.radiusKm
     private(set) var phase: Phase = .idle
     private(set) var updatedAt: Date?
@@ -31,7 +37,9 @@ final class StationsModel {
     var showsFuelPicker = false
 
     /// Filter query typed in the search bar.
-    var filterText: String = ""
+    var filterText: String = "" {
+        didSet { recomputeDerivedState() }
+    }
     /// Whether the user is currently typing in the search bar.
     var isSearching = false
 
@@ -71,6 +79,7 @@ final class StationsModel {
             navigationApp = .appleMaps
             stations = Station.samples
             updatedAt = .now.addingTimeInterval(-4 * 60)
+            recomputeDerivedState()
             return
         }
         fuels = preferences.fuels
@@ -83,33 +92,42 @@ final class StationsModel {
             updatedAt = snapshot.date
             listCoordinate = CLLocationCoordinate2D(latitude: snapshot.latitude, longitude: snapshot.longitude)
         }
+        recomputeDerivedState()
         location.onUpdate = { [weak self] location in self?.locationChanged(location) }
     }
 
     // MARK: - Derived
 
-    var visible: [Station] {
+    private(set) var visible: [Station] = []
+    private(set) var cheapestPrice: Double? = nil
+
+    private func recomputeDerivedState() {
         let sorted = StationSort.sorted(stations ?? [], by: sort, fuels: fuels)
         let query = filterText.trimmingCharacters(in: .whitespacesAndNewlines).folding(options: .diacriticInsensitive, locale: .current)
-        guard !query.isEmpty else { return sorted }
-        return sorted.filter { station in
-            let city = station.city.folding(options: .diacriticInsensitive, locale: .current)
-            let address = station.address.folding(options: .diacriticInsensitive, locale: .current)
-            let name = station.name.folding(options: .diacriticInsensitive, locale: .current)
-            let postcode = station.postcode
-            return city.localizedCaseInsensitiveContains(query)
-                || address.localizedCaseInsensitiveContains(query)
-                || name.localizedCaseInsensitiveContains(query)
-                || postcode.contains(query)
+        if query.isEmpty {
+            visible = sorted
+        } else {
+            visible = sorted.filter { station in
+                let city = station.city.folding(options: .diacriticInsensitive, locale: .current)
+                let address = station.address.folding(options: .diacriticInsensitive, locale: .current)
+                let name = station.name.folding(options: .diacriticInsensitive, locale: .current)
+                let postcode = station.postcode
+                return city.localizedCaseInsensitiveContains(query)
+                    || address.localizedCaseInsensitiveContains(query)
+                    || name.localizedCaseInsensitiveContains(query)
+                    || postcode.contains(query)
+            }
         }
+        cheapestPrice = visible.compactMap { $0.best(fuels)?.price }.min()
     }
-
-    var cheapestPrice: Double? { visible.compactMap { $0.best(fuels)?.price }.min() }
 
     func station(_ id: Station.ID?) -> Station? {
         guard let id else { return nil }
+        if let found = stations?.first(where: { $0.id == id }) {
+            return found
+        }
         // A widget set to another fuel links stations the list may not have: its own copy then.
-        return stations?.first { $0.id == id } ?? WidgetStations.load().first { $0.id == id }
+        return WidgetStations.load().first { $0.id == id }
     }
 
     func isCheapest(_ station: Station) -> Bool {
@@ -365,9 +383,12 @@ final class StationsModel {
 
     private func saveSnapshot(at coordinate: CLLocationCoordinate2D) {
         guard let stations else { return }
-        Snapshot(
+        let snapshot = Snapshot(
             date: updatedAt ?? .now, latitude: coordinate.latitude, longitude: coordinate.longitude,
             fuels: fuels, radiusKm: radiusKm, stations: stations
-        ).save()
+        )
+        Task.detached(priority: .background) {
+            snapshot.save()
+        }
     }
 }

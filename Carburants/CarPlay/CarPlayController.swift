@@ -39,6 +39,7 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
     /// Rendered logos and badges, by station or fuel; emptied when downloaded logos arrive.
     private var images: [String: UIImage] = [:]
     private var imagesRevision = -1
+    private var lastDisplayScale: CGFloat = 0
 
     init(interface: CPInterfaceController, scene: CPTemplateApplicationScene) {
         self.interface = interface
@@ -70,6 +71,14 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
             model.resetToCurrentLocation()
         }
         model.resume()
+        let scale = currentDisplayScale()
+        if scale != lastDisplayScale {
+            images.removeAll()
+            lastDisplayScale = scale
+            pointsContent = nil
+            listContent = nil
+            render()
+        }
     }
 
     func sceneWillEnterForeground() {
@@ -97,6 +106,13 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         let revision = LogoStore.shared.revision
         let sort = model.sort
         let status = [emptyTitle, emptySubtitle]
+        let currentScale = currentDisplayScale()
+        if currentScale != lastDisplayScale {
+            images.removeAll()
+            lastDisplayScale = currentScale
+            pointsContent = nil
+            listContent = nil
+        }
         if revision != imagesRevision {
             images.removeAll()
             imagesRevision = revision
@@ -200,6 +216,17 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         item.name = station.name
         let prices = priceLine(station, fuels: fuels)
         let place = [station.distanceKm.map(Format.distance), Opening.of(station)?.text].compactMap { $0 }.joined(separator: " · ")
+
+        let pinSize = CPPointOfInterest.pinImageSize.width > 0 ? CPPointOfInterest.pinImageSize.width : 40
+        let selectedPinSize = CPPointOfInterest.selectedPinImageSize.width > 0 ? CPPointOfInterest.selectedPinImageSize.width : 48
+
+        let pin = cachedImage("pin-\(station.id)-\(model.isCheapest(station))-\(Int(pinSize))") {
+            StationLogo(station, size: pinSize).overlay { cheapestRing(station, size: pinSize) }
+        }
+        let selectedPin = cachedImage("pin-selected-\(station.id)-\(model.isCheapest(station))-\(Int(selectedPinSize))") {
+            StationLogo(station, size: selectedPinSize).overlay { cheapestRing(station, size: selectedPinSize) }
+        }
+
         let point = CPPointOfInterest(
             location: item,
             title: station.name,
@@ -208,9 +235,8 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
             detailTitle: station.name,
             detailSubtitle: prices,
             detailSummary: "\(station.prettyAddress), \(station.prettyCity)\n\(place)",
-            pinImage: cachedImage("pin-\(station.id)-\(model.isCheapest(station))") {
-                StationLogo(station, size: 32).overlay { cheapestRing(station, size: 32) }
-            }
+            pinImage: pin,
+            selectedPinImage: selectedPin
         )
         point.userInfo = station.id
         point.primaryButton = CPTextButton(title: "Y aller", textStyle: .confirm) { [weak self] _ in
@@ -300,30 +326,12 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         if let waze = URL(string: "waze://"), UIApplication.shared.canOpenURL(waze) {
             apps.append(.waze)
         }
-        if !apps.contains(model.navigationApp) {
-            apps.append(model.navigationApp)
-        }
         return apps
     }
 
     private func openNavigationApp(_ app: NavigationApp, for station: Station) {
-        let url: URL
-        switch app {
-        case .appleMaps:
-            url = URL(string: "maps://?daddr=\(station.latitude),\(station.longitude)&dirflg=d")!
-        case .googleMaps:
-            url = URL(string: "comgooglemaps://?daddr=\(station.latitude),\(station.longitude)&directionsmode=driving")!
-        case .waze:
-            url = URL(string: "waze://?ll=\(station.latitude),\(station.longitude)&navigate=yes")!
-        }
-
-        if interface.presentedTemplate != nil {
-            interface.dismissTemplate(animated: true) { [weak self] _, _ in
-                self?.scene?.open(url, options: nil, completionHandler: nil)
-            }
-        } else {
-            scene?.open(url, options: nil, completionHandler: nil)
-        }
+        let url = app.url(for: station)
+        scene?.open(url, options: nil, completionHandler: nil)
     }
 
     // MARK: - Images
@@ -335,11 +343,20 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         }
     }
 
+    private func currentDisplayScale() -> CGFloat {
+        let scale = interface.carTraitCollection.displayScale
+        if scale > 0 { return scale }
+        if let window = scene?.carWindow, window.screen.scale > 0 {
+            return window.screen.scale
+        }
+        return 2.0
+    }
+
     private func cachedImage<Picture: View>(_ key: String, _ view: () -> Picture) -> UIImage? {
         if let image = images[key] { return image }
         let renderer = ImageRenderer(content: view())
-        renderer.scale = interface.carTraitCollection.displayScale
-        let image = renderer.uiImage
+        renderer.scale = currentDisplayScale()
+        guard let image = renderer.uiImage?.withRenderingMode(.alwaysOriginal) else { return nil }
         images[key] = image
         return image
     }

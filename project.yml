@@ -121,5 +121,6 @@ schemes:
         CarburantsWidget: all
     run:
       config: Debug
+      enableGPUValidationMode: false
     archive:
       config: Release

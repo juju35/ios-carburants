@@ -2,28 +2,29 @@ import CarburantsKit
 import MapKit
 import SwiftUI
 
-/// Main window layout, switching with the window's proportions:
-/// - unfolded portrait / compact: the map full screen, the list in an interactive sheet with detents;
-/// - unfolded landscape / regular: the map full screen, the list in a collapsible side panel;
-/// - partly folded (iPhone Duo): the map and the list split across the fold, edge-to-edge.
+/// Main screen of the application:
+/// - on portrait and compact screens (iPhone): the map full screen, the stations in an interactive drawer sheet;
+/// - on landscape screens (iPad, Mac): the map full screen, the stations in a collapsible floating side panel;
+/// - on iPhone Duo folded: the map and the stations each occupy one side of the fold.
 struct ContentView: View {
     @Bindable var model: StationsModel
 
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    private static let middle: PresentationDetent = .fraction(0.42)
+    private static let panelWidth: CGFloat = 380
+
     @State private var camera: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var detent: PresentationDetent = Self.middle
-    @State private var isPanelVisible = true
     @State private var framed = false
-
-    private static let middle: PresentationDetent = .fraction(0.42)
-    private static let panelWidth: CGFloat = 360
-
-    private var isRegular: Bool { horizontalSizeClass == .regular }
+    @State private var isPanelVisible = true
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     var body: some View {
         GeometryReader { proxy in
             let hinge = Fold.band(in: proxy)
-            let portrait = proxy.size.height >= proxy.size.width
+            let isRegular = horizontalSizeClass == .regular
+            let portrait = proxy.size.height > proxy.size.width
+
             Group {
                 if let hinge {
                     FoldedLayout(
@@ -57,6 +58,7 @@ struct ContentView: View {
         .onChange(of: model.selectedID) { _, id in
             guard let station = model.station(id) else { return }
             if detent == .large, !Demo.isOn { detent = Self.middle }
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             withAnimation(.smooth) {
                 camera = .region(MKCoordinateRegion(center: station.coordinate, latitudinalMeters: 1_500, longitudinalMeters: 1_500))
             }
@@ -219,13 +221,14 @@ private struct PanelBackground: ViewModifier {
         let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
         if #available(iOS 26, *) {
             content
-                .clipShape(shape)
                 .glassEffect(.regular, in: shape)
+                .clipShape(shape)
+                .shadow(color: .black.opacity(0.12), radius: 20, y: 8)
         } else {
             content
                 .background(.regularMaterial, in: shape)
                 .clipShape(shape)
-                .shadow(color: .black.opacity(0.15), radius: 16, y: 4)
+                .shadow(color: .black.opacity(0.12), radius: 20, y: 8)
         }
     }
 }

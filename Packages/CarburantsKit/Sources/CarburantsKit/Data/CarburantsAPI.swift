@@ -143,6 +143,7 @@ public enum CarburantsAPI {
         return formatter
     }()
 
+    private static let plainLock = NSLock()
     private static let plain: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -151,11 +152,17 @@ public enum CarburantsAPI {
         return formatter
     }()
 
+    private static func parsePlainTime(_ text: String) -> Date? {
+        plainLock.lock()
+        defer { plainLock.unlock() }
+        return plain.date(from: text)
+    }
+
     /// Feed times: ISO with offset, or "2026-10-20 18:05:00" in UTC.
     static func parseTime(_ value: String?) -> Date? {
         guard let text = value?.trimmingCharacters(in: .whitespaces), !text.isEmpty else { return nil }
         return iso.date(from: text) ?? isoFractional.date(from: text)
-            ?? plain.date(from: text.replacingOccurrences(of: "T", with: " "))
+            ?? parsePlainTime(text.replacingOccurrences(of: "T", with: " "))
     }
 
     // MARK: - JSON

@@ -119,10 +119,16 @@ public actor StationRepository {
             guard let info = brands[station.id] else { return true }
             return (info.brand == nil || info.wikidata == nil) && now.timeIntervalSince(info.checkedAt) > Self.retryInterval
         }
-        guard !todo.isEmpty, let found = try? await Overpass.lookup(todo) else { return }
+        guard !todo.isEmpty else { return }
+        let found = try? await Overpass.lookup(todo)
         for station in todo {
-            let tags = found[station.id]
-            brands[station.id] = BrandInfo(brand: tags?.brand, osmName: tags?.name, wikidata: tags?.wikidata, checkedAt: now)
+            if let tags = found?[station.id] {
+                brands[station.id] = BrandInfo(brand: tags.brand, osmName: tags.name, wikidata: tags.wikidata, checkedAt: now)
+            } else if brands[station.id] == nil {
+                brands[station.id] = BrandInfo(brand: nil, osmName: nil, wikidata: nil, checkedAt: now)
+            } else {
+                brands[station.id]?.checkedAt = now
+            }
         }
         // The file is read whole, by the widget too: only the stations looked up last are kept.
         if brands.count > Self.maxBrands {
@@ -138,9 +144,16 @@ public actor StationRepository {
             guard let info = logos[qid] else { return true }
             return info.url == nil && now.timeIntervalSince(info.checkedAt) > Self.retryInterval
         }
-        guard !todo.isEmpty, let found = try? await WikidataLogos.urls(Set(todo)) else { return }
+        guard !todo.isEmpty else { return }
+        let found = try? await WikidataLogos.urls(Set(todo))
         for qid in todo {
-            logos[qid] = LogoInfo(url: found[qid].flatMap { $0 }, checkedAt: now)
+            if let url = found?[qid] {
+                logos[qid] = LogoInfo(url: url, checkedAt: now)
+            } else if logos[qid] == nil {
+                logos[qid] = LogoInfo(url: nil, checkedAt: now)
+            } else {
+                logos[qid]?.checkedAt = now
+            }
         }
         SharedStorage.writeJSON(logos, to: "logos.json")
     }

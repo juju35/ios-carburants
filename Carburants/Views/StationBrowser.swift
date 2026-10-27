@@ -73,6 +73,10 @@ struct StationBrowser: View {
         }
         .onChange(of: path) { _, path in
             model.selectedID = path.last
+            if !path.isEmpty {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                isSearchFieldFocused = false
+            }
         }
     }
 
@@ -96,12 +100,12 @@ struct StationBrowser: View {
     }
 
     private func submitSearchQuery() {
-        let query = model.filterText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return }
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         isSearchFieldFocused = false
         model.isSearching = false
         dismissSearch()
+        let query = model.filterText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return }
         Task {
             if let resolved = await TownSearchCompleter.resolve(query: query) {
                 model.searchTown(name: resolved.name, coordinate: resolved.coordinate)
@@ -119,8 +123,8 @@ struct StationBrowser: View {
             } description: {
                 Text("Pour afficher les stations les plus proches et leurs prix.")
             } actions: {
-                Button("Autoriser la localisation") {
-                    location.requestPermission()
+                Button("Autoriser la position") {
+                    location.start()
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -128,55 +132,18 @@ struct StationBrowser: View {
             ContentUnavailableView {
                 Label("Position refusée", systemImage: "location.slash")
             } description: {
-                Text("Activez la localisation dans Réglages pour voir les stations autour de vous.")
+                Text("Autorisez l’accès dans Réglages pour situer les stations autour de vous.")
             } actions: {
-                Button("Ouvrir les Réglages") {
+                Button("Ouvrir Réglages") {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
                         openURL(url)
                     }
                 }
                 .buttonStyle(.borderedProminent)
             }
-        } else if model.customLocation == nil, !Demo.isOn, location.failed {
-            ContentUnavailableView {
-                Label("Position introuvable", systemImage: "location.slash")
-            } description: {
-                Text("Carburants n’arrive pas à déterminer votre position. Vérifiez que le mode Avion est désactivé.")
-            } actions: {
-                Button("Réessayer") {
-                    location.retry()
-                }
-                .buttonStyle(.borderedProminent)
-            }
-        } else if model.stations == nil && model.phase == .loading {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if let stations = model.stations, stations.isEmpty {
-            ContentUnavailableView {
-                Label("Aucune station", systemImage: "fuelpump.slash")
-            } description: {
-                Text(
-                    model.customTownName != nil
-                        ? "Aucune station dans un rayon de \(model.radiusKm) km autour de \(model.customTownName ?? "")."
-                        : "Aucune station \(Format.fuels(model.fuels)) dans un rayon de \(model.radiusKm) km. "
-                            + "Augmentez le rayon ou modifiez vos carburants."
-                )
-            } actions: {
-                if model.customTownName != nil {
-                    Button("Ma position") {
-                        model.resetToCurrentLocation()
-                    }
-                    .buttonStyle(.borderedProminent)
-                } else {
-                    Button("Carburants") {
-                        model.showsFuelPicker = true
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-            }
         } else if model.stations == nil, case let .failed(message) = model.phase {
             ContentUnavailableView {
-                Label("Impossible de charger", systemImage: "wifi.slash")
+                Label("Prix indisponibles", systemImage: "wifi.slash")
             } description: {
                 Text(message)
             } actions: {
@@ -185,18 +152,35 @@ struct StationBrowser: View {
                 }
                 .buttonStyle(.borderedProminent)
             }
+        } else if model.stations == nil {
+            ContentUnavailableView {
+                ProgressView().controlSize(.large)
+            } description: {
+                Text("Recherche des stations…")
+            }
+        } else if model.visible.isEmpty, model.filterText.isEmpty {
+            ContentUnavailableView {
+                Label("Aucune station", systemImage: "fuelpump")
+            } description: {
+                Text("Aucune station ne vend \(Format.fuels(model.fuels)) dans un rayon de \(model.radiusKm) km.")
+            } actions: {
+                Button("Changer les carburants") {
+                    model.showsFuelPicker = true
+                }
+                .buttonStyle(.borderedProminent)
+            }
         } else {
-            stationList
+            list
         }
     }
 
-    private var stationList: some View {
+    private var list: some View {
         List {
             if let customTown = model.customTownName {
                 Section {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Recherche autour de")
+                            Text("Recherche active")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             Text(customTown)
@@ -230,6 +214,7 @@ struct StationBrowser: View {
             footer
         }
         .listStyle(.plain)
+        .scrollDismissesKeyboard(.interactively)
         .overlay {
             if model.visible.isEmpty, !model.filterText.isEmpty, completer.suggestions.isEmpty {
                 ContentUnavailableView.search(text: model.filterText)
@@ -271,11 +256,13 @@ struct StationBrowser: View {
 
         ToolbarItem(placement: .topBarTrailing) {
             HStack(spacing: 12) {
-                if inlineSearch && (isSearchFieldFocused || model.isSearching) {
+                if inlineSearch && (isSearchFieldFocused || model.isSearching || !model.filterText.isEmpty) {
                     Button("Annuler") {
-                        model.filterText = ""
-                        isSearchFieldFocused = false
-                        model.isSearching = false
+                        withAnimation(.smooth) {
+                            model.filterText = ""
+                            isSearchFieldFocused = false
+                            model.isSearching = false
+                        }
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
                 } else {
@@ -308,6 +295,20 @@ struct StationBrowser: View {
                 }
             }
         }
+
+        ToolbarItemGroup(placement: .keyboard) {
+            Spacer()
+            Button {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                isSearchFieldFocused = false
+                if model.filterText.isEmpty {
+                    model.isSearching = false
+                }
+            } label: {
+                Image(systemName: "keyboard.chevron.compact.down")
+            }
+            .accessibilityLabel("Masquer le clavier")
+        }
     }
 }
 
@@ -325,7 +326,13 @@ private struct InlineSearchField: View {
                 .font(.footnote)
             TextField(
                 "Rechercher",
-                text: $text
+                text: $text,
+                onEditingChanged: { editing in
+                    if editing {
+                        isSearching = true
+                        isFocused = true
+                    }
+                }
             )
             .textFieldStyle(.plain)
             .font(.subheadline)
@@ -347,11 +354,12 @@ private struct InlineSearchField: View {
         .padding(.vertical, 5)
         .background(Color(.tertiarySystemFill), in: Capsule())
         .contentShape(Capsule())
-        .simultaneousGesture(TapGesture().onEnded {
+        .onTapGesture {
             if !isFocused {
                 isFocused = true
             }
-        })
+            isSearching = true
+        }
         .onChange(of: isFocused) { _, focused in
             if focused, !isSearching {
                 isSearching = true
@@ -400,20 +408,24 @@ struct DisableVerticalToolbarModifier: ViewModifier {
     }
 }
 
-/// Pulls the data feed's date and the current radius, with buttons to widen or reset.
+/// Last update time and data credits at the bottom of the list.
 private struct BrowserFooter: View {
     @Bindable var model: StationsModel
 
     var body: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 6) {
-                if let updated = model.updatedAt {
-                    Text("Données gouvernementales \(Format.ago(updated)).")
-                }
-                Text("Rayon de recherche : \(model.radiusKm) km.")
+        VStack(spacing: 4) {
+            if let date = model.updatedAt {
+                Text("Mis à jour \(Format.ago(date))")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
-            .font(.footnote)
-            .foregroundStyle(.secondary)
+            Text("Données gouvernementales (prix-carburants.gouv.fr)")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(Color.clear)
     }
 }

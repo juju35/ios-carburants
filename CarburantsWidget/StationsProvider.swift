@@ -121,7 +121,7 @@ struct StationsEntry: TimelineEntry {
 @MainActor
 private final class WidgetLocationFetcher: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
-    private var continuation: CheckedContinuation<CLLocationCoordinate2D?, Never>?
+    private var continuations: [CheckedContinuation<CLLocationCoordinate2D?, Never>] = []
 
     override init() {
         super.init()
@@ -138,31 +138,36 @@ private final class WidgetLocationFetcher: NSObject, CLLocationManagerDelegate {
         }
 
         return await withCheckedContinuation { continuation in
-            self.continuation = continuation
-            manager.requestLocation()
-            Task { [weak self] in
-                try? await Task.sleep(for: .seconds(3))
-                guard let self, let cont = self.continuation else { return }
-                self.continuation = nil
-                cont.resume(returning: self.manager.location?.coordinate)
+            let wasEmpty = continuations.isEmpty
+            continuations.append(continuation)
+            if wasEmpty {
+                manager.requestLocation()
+                Task { [weak self] in
+                    try? await Task.sleep(for: .seconds(3))
+                    self?.resumeAll(with: self?.manager.location?.coordinate)
+                }
             }
+        }
+    }
+
+    private func resumeAll(with coordinate: CLLocationCoordinate2D?) {
+        let pending = continuations
+        continuations.removeAll()
+        for cont in pending {
+            cont.resume(returning: coordinate)
         }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         let coord = locations.last?.coordinate
         Task { @MainActor in
-            guard let cont = self.continuation else { return }
-            self.continuation = nil
-            cont.resume(returning: coord)
+            self.resumeAll(with: coord)
         }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         Task { @MainActor in
-            guard let cont = self.continuation else { return }
-            self.continuation = nil
-            cont.resume(returning: self.manager.location?.coordinate)
+            self.resumeAll(with: self.manager.location?.coordinate)
         }
     }
 }
