@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.0
+
+### Improvements
+- CarPlay: restored brand logos on the points-of-interest map screen
+- CarPlay: provide station pins and selected pins at native CarPlay dimensions
+- Keyboard: added toolbar dismiss button and interactive scroll dismissal on station list
+
+### Fixes
+- MapKit: resolved Metal API validation crash during split-view and window resizing
+- Performance: memoized visible stations and cheapest price lookups in StationsModel
+- Concurrency: thread-safe date parsing and fixed widget location continuation leaks
+- Stability: safe bounds checking on station opening days and proper fallback for navigation URLs
+
 ## 1.2.0
 
 ### Fixes

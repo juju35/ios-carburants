@@ -1,11 +1,8 @@
-Nouveautés
-• iPhone Duo à moitié plié : la liste d’un côté de la pliure, la carte de l’autre
-• Panneau Liquid Glass sur iPad et iPhone Duo ouvert
-• Position approximative signalée, avec accès à la position exacte
-• Widgets : l’ouverture des stations change à la bonne minute
+Nouveautés & Améliorations
+• CarPlay : affichage des logos des marques sur l’écran Carte et épingles aux dimensions natives
+• Clavier : bouton de masquage dans la barre d’outils et fermeture interactive au défilement
 
 Corrections
-• La recherche pouvait partir d’une ancienne position
-• Mise à jour automatique toutes les 10 minutes, même à l’arrêt
-• CarPlay : la fiche station ouverte ne se ferme plus à chaque mise à jour
-• « Rupture » n’apparaît plus pour un carburant simplement sans prix
+• Stabilité : résolution d’un plantage graphique lors du redimensionnement de la carte
+• Performances : accélération du calcul des prix les plus bas et fluidité accrue
+• Fiabilisation des requêtes réseau et des liens de navigation
