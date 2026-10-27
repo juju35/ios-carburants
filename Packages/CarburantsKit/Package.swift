@@ -1,4 +1,4 @@
-// swift-tools-version: 5.10
+// swift-tools-version: 6.0
 import PackageDescription
 
 // Shared by the app, its CarPlay scene and the widget extension: data, caches and the small SwiftUI pieces.
@@ -15,12 +15,14 @@ let package = Package(
             resources: [
                 .copy("Resources/Logos"),
                 .copy("Resources/brand_logos.json"),
-            ]
+            ],
+            swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
             name: "CarburantsKitTests",
             dependencies: ["CarburantsKit"],
-            resources: [.copy("Fixtures")]
+            resources: [.copy("Fixtures")],
+            swiftSettings: [.swiftLanguageMode(.v6)]
         ),
     ]
 )

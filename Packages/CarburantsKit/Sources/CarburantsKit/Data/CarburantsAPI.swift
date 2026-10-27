@@ -33,7 +33,11 @@ public enum CarburantsAPI {
     private static func coordinate(_ value: Double) -> String { String(format: "%.3f", value) }
 
     private static func fetch(where filter: String, orderBy: String) async throws -> Data {
-        try await HTTP.get(HTTP.url(records, ["where": filter, "order_by": orderBy, "limit": String(maxResults)]))
+        // Prices change every 10 minutes: always fetch fresh, never a cached copy.
+        try await HTTP.get(
+            HTTP.url(records, ["where": filter, "order_by": orderBy, "limit": String(maxResults)]),
+            cachePolicy: .reloadIgnoringLocalCacheData
+        )
     }
 
     /// The stations of one API response.
@@ -127,19 +131,19 @@ public enum CarburantsAPI {
 
     // MARK: - Times
 
-    private static let iso: ISO8601DateFormatter = {
+    nonisolated(unsafe) private static let iso: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
         return formatter
     }()
 
-    private static let isoFractional: ISO8601DateFormatter = {
+    nonisolated(unsafe) private static let isoFractional: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
     }()
 
-    private static let plain: DateFormatter = {
+    nonisolated(unsafe) private static let plain: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(identifier: "UTC")
@@ -183,9 +187,13 @@ public enum CarburantsAPI {
 
     private static func number(_ value: Any?) -> Double? {
         switch value {
-        case let number as NSNumber: number.doubleValue
-        case let text as String: Double(text.trimmingCharacters(in: .whitespaces))
-        default: nil
+        case let number as NSNumber:
+            return number.doubleValue
+        case let text as String:
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return Double(trimmed)
+        default:
+            return nil
         }
     }
 }
