@@ -143,7 +143,7 @@ public enum CarburantsAPI {
         return formatter
     }()
 
-    nonisolated(unsafe) private static let plain: DateFormatter = {
+    private static let plain: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(identifier: "UTC")
