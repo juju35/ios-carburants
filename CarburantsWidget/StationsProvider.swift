@@ -118,6 +118,55 @@ struct StationsEntry: TimelineEntry {
     }()
 }
 
+@MainActor
+private final class WidgetLocationFetcher: NSObject, CLLocationManagerDelegate {
+    private let manager = CLLocationManager()
+    private var continuation: CheckedContinuation<CLLocationCoordinate2D?, Never>?
+
+    override init() {
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+    }
+
+    func fetchCoordinate() async -> CLLocationCoordinate2D? {
+        guard manager.isAuthorizedForWidgetUpdates else { return nil }
+
+        // If manager has a very recent fix (< 60s), use it immediately without waiting:
+        if let location = manager.location, -location.timestamp.timeIntervalSinceNow < 60 {
+            return location.coordinate
+        }
+
+        return await withCheckedContinuation { continuation in
+            self.continuation = continuation
+            manager.requestLocation()
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(3))
+                guard let self, let cont = self.continuation else { return }
+                self.continuation = nil
+                cont.resume(returning: self.manager.location?.coordinate)
+            }
+        }
+    }
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        let coord = locations.last?.coordinate
+        Task { @MainActor in
+            guard let cont = self.continuation else { return }
+            self.continuation = nil
+            cont.resume(returning: coord)
+        }
+    }
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        Task { @MainActor in
+            guard let cont = self.continuation else { return }
+            self.continuation = nil
+            cont.resume(returning: self.manager.location?.coordinate)
+        }
+    }
+}
+
 struct StationsProvider: AppIntentTimelineProvider {
     // Prices change every 10 minutes at most; WidgetKit spaces reloads out anyway.
     private static let refresh: TimeInterval = 30 * 60
@@ -152,7 +201,7 @@ struct StationsProvider: AppIntentTimelineProvider {
     }
 
     private func load(fuels: [Fuel], sort: StationOrder) async -> StationsEntry {
-        guard let location = currentLocation() else {
+        guard let location = await currentLocation() else {
             return StationsEntry(date: .now, fuels: fuels, stations: [], order: sort, state: .noLocation, updated: .now)
         }
         do {
@@ -185,11 +234,15 @@ struct StationsProvider: AppIntentTimelineProvider {
     }
 
     /// The widget's own location when allowed (NSWidgetWantsLocation), else where the app last searched.
-    private func currentLocation() -> CLLocationCoordinate2D? {
-        let manager = CLLocationManager()
-        if manager.isAuthorizedForWidgetUpdates, let location = manager.location,
-           Date().timeIntervalSince(location.timestamp) < 2 * 3600 {
-            return location.coordinate
+    private func currentLocation() async -> CLLocationCoordinate2D? {
+        let fetcher = await WidgetLocationFetcher()
+        if let coordinate = await fetcher.fetchCoordinate() {
+            Preferences.shared.lastLocation = .init(
+                latitude: (coordinate.latitude * 1000).rounded() / 1000,
+                longitude: (coordinate.longitude * 1000).rounded() / 1000,
+                date: .now
+            )
+            return coordinate
         }
         return Preferences.shared.lastLocation.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
     }

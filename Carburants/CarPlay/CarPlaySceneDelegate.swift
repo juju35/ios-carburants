@@ -11,7 +11,11 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     ) {
         let controller = CarPlayController(interface: interfaceController, scene: templateApplicationScene)
         self.controller = controller
+        StationsModel.shared.setCarPlayConnected(true)
         controller.start()
+        if templateApplicationScene.activationState == .foregroundActive {
+            StationsModel.shared.setCarPlayVisible(true)
+        }
     }
 
     func templateApplicationScene(
@@ -19,5 +23,20 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         didDisconnectInterfaceController interfaceController: CPInterfaceController
     ) {
         controller = nil
+        StationsModel.shared.setCarPlayConnected(false)
+        StationsModel.shared.setCarPlayVisible(false)
+    }
+
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        StationsModel.shared.setCarPlayVisible(true)
+        controller?.sceneDidBecomeActive()
+    }
+
+    func sceneWillResignActive(_ scene: UIScene) {
+        StationsModel.shared.setCarPlayVisible(false)
+    }
+
+    func sceneDidEnterBackground(_ scene: UIScene) {
+        StationsModel.shared.setCarPlayVisible(false)
     }
 }

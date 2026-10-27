@@ -25,6 +25,10 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate {
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
         manager.distanceFilter = 100
         manager.activityType = .automotiveNavigation
+        if let modes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String],
+           modes.contains("location") {
+            manager.allowsBackgroundLocationUpdates = false
+        }
     }
 
     var isAuthorized: Bool { authorization == .authorizedWhenInUse || authorization == .authorizedAlways }
@@ -35,6 +39,17 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate {
         case .notDetermined: manager.requestWhenInUseAuthorization()
         case .authorizedWhenInUse, .authorizedAlways: manager.startUpdatingLocation()
         default: break
+        }
+    }
+
+    func stop() {
+        manager.stopUpdatingLocation()
+    }
+
+    func setCarPlayActive(_ active: Bool) {
+        if let modes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String],
+           modes.contains("location") {
+            manager.allowsBackgroundLocationUpdates = active
         }
     }
 

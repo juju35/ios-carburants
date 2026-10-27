@@ -46,6 +46,9 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
     }
 
     func start() {
+        if model.customLocation != nil {
+            model.resetToCurrentLocation()
+        }
         mapTemplate.pointOfInterestDelegate = self
         mapTemplate.tabTitle = "Carte"
         mapTemplate.tabImage = UIImage(systemName: "map.fill")
@@ -59,6 +62,20 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         model.start()
         model.resume()
         observe()
+    }
+
+    func sceneDidBecomeActive() {
+        if model.customLocation != nil {
+            model.resetToCurrentLocation()
+        }
+        model.resume()
+    }
+
+    func sceneWillEnterForeground() {
+        if model.customLocation != nil {
+            model.resetToCurrentLocation()
+        }
+        model.resume()
     }
 
     /// Renders now, and again after any change to what was read (until the scene goes and this controller with it).

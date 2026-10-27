@@ -62,6 +62,8 @@ targets:
           - CFBundleURLName: me.jstephan.carburants
             CFBundleURLSchemes:
               - carburants
+        UIBackgroundModes:
+          - location
         UIApplicationSceneManifest:
           # Split View on iPhone Duo and iPad: several windows on one model.
           UIApplicationSupportsMultipleScenes: true

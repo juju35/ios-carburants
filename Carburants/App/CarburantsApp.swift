@@ -10,9 +10,12 @@ struct CarburantsApp: App {
         WindowGroup {
             ContentView(model: model)
                 .onOpenURL { model.open($0) }
-                .onAppear { model.start() }
+                .onAppear {
+                    model.start()
+                    model.setIPhoneVisible(scenePhase == .active)
+                }
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .active { model.resume() }
+                    model.setIPhoneVisible(phase == .active)
                 }
         }
     }

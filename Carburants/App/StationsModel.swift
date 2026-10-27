@@ -35,6 +35,15 @@ final class StationsModel {
     /// Whether the user is currently typing in the search bar.
     var isSearching = false
 
+    /// Whether the iPhone window or CarPlay app is currently visible on screen.
+    private(set) var isIPhoneVisible = false
+    private(set) var isCarPlayVisible = false
+    private(set) var isCarPlayConnected = false
+
+    var isAppVisible: Bool {
+        isIPhoneVisible || isCarPlayVisible
+    }
+
     /// When set, stations are searched around this town rather than user's GPS position.
     private(set) var customTownName: String?
     private(set) var customLocation: CLLocation?
@@ -45,12 +54,13 @@ final class StationsModel {
     @ObservationIgnored private var listCoordinate: CLLocationCoordinate2D?
     @ObservationIgnored private var fetchTask: Task<Void, Never>?
     @ObservationIgnored private var started = false
+    @ObservationIgnored private var needsReloadOnNextFix = false
 
-    // New search after 2 km or 10 minutes (the feed is refreshed every 10 minutes).
-    private static let refetchMeters: CLLocationDistance = 2_000
+    // New search after 1 km or 10 minutes (the feed is refreshed every 10 minutes).
+    private static let refetchMeters: CLLocationDistance = 1_000
     private static let refetchInterval: TimeInterval = 10 * 60
     // CoreLocation first hands over its last known fix, possibly hours old: not a place to search around.
-    private static let maxFixAge: TimeInterval = 60
+    private static let maxFixAge: TimeInterval = 120
 
     private init() {
         if Demo.isOn {
@@ -107,6 +117,34 @@ final class StationsModel {
         return price == cheapest
     }
 
+    // MARK: - Lifecycle & Visibility
+
+    func setIPhoneVisible(_ visible: Bool) {
+        guard isIPhoneVisible != visible else { return }
+        isIPhoneVisible = visible
+        visibilityChanged()
+    }
+
+    func setCarPlayVisible(_ visible: Bool) {
+        guard isCarPlayVisible != visible else { return }
+        isCarPlayVisible = visible
+        visibilityChanged()
+    }
+
+    func setCarPlayConnected(_ connected: Bool) {
+        isCarPlayConnected = connected
+    }
+
+    private func visibilityChanged() {
+        location.setCarPlayActive(isCarPlayVisible)
+        if isAppVisible {
+            resume()
+        } else {
+            location.stop()
+            fetchTask?.cancel()
+        }
+    }
+
     // MARK: - Actions
 
     func start() {
@@ -114,7 +152,6 @@ final class StationsModel {
             if Demo.screen == .detail { selectedID = visible.first?.id }
             return
         }
-        location.start()
         guard !started else { return }
         started = true
         Task { await StationRepository.shared.warmUp() }
@@ -129,19 +166,30 @@ final class StationsModel {
     }
 
     private func refreshIfOld() {
+        guard isAppVisible else { return }
         guard fetchTask == nil, let updatedAt, Date().timeIntervalSince(updatedAt) > Self.refetchInterval else { return }
         refresh()
     }
 
-    /// Back to the foreground: a new search if the list is old.
+    /// Back to the foreground: a new search if the position changed or list is old.
     func resume() {
         guard !Demo.isOn else { return }
+        guard isAppVisible else { return }
         location.start()
         if customLocation != nil {
             if let updatedAt, Date().timeIntervalSince(updatedAt) > Self.refetchInterval, fetchTask == nil { refresh() }
-        } else if let current = location.location, isFresh(current), isStale(current), fetchTask == nil {
-            refresh()
+        } else if let current = location.location, isFresh(current) {
+            if shouldReloadOnForeground(at: current), fetchTask == nil {
+                refresh()
+            }
+        } else {
+            needsReloadOnNextFix = true
         }
+    }
+
+    private func shouldReloadOnForeground(at location: CLLocation) -> Bool {
+        guard let last = fetchedAt, let updatedAt, stations != nil else { return true }
+        return last.distance(from: location) > 300 || Date().timeIntervalSince(updatedAt) > 5 * 60
     }
 
     func setFuels(_ newValue: [Fuel]) {
@@ -151,7 +199,7 @@ final class StationsModel {
         stations = nil
         selectedID = nil
         fetchedAt = nil
-        refresh()
+        refresh(force: true)
         WidgetCenter.shared.reloadAllTimelines()
     }
 
@@ -200,7 +248,7 @@ final class StationsModel {
         stations = nil
         selectedID = nil
         fetchedAt = nil
-        refresh()
+        refresh(force: true)
     }
 
     /// `carburants://station/<id>`, from the widget.
@@ -211,7 +259,8 @@ final class StationsModel {
 
     /// Starts a search around the active position (custom town or GPS); await the task for pull to refresh.
     @discardableResult
-    func refresh() -> Task<Void, Never>? {
+    func refresh(force: Bool = false) -> Task<Void, Never>? {
+        guard isAppVisible || force else { return nil }
         let target = customLocation ?? location.location
         guard let target else { return nil }
         fetchTask?.cancel()
@@ -224,14 +273,31 @@ final class StationsModel {
     // MARK: - Loading
 
     private func locationChanged(_ location: CLLocation) {
-        // When a custom town search is active, GPS movement doesn't override it.
+        // Only track and refresh if UI is currently visible
+        guard isAppVisible else { return }
         guard customLocation == nil else { return }
         guard isFresh(location) else { return }
+        updateDistances(to: location)
         if fetchTask != nil {
             // A search is running from an earlier position: start again when this one is far from it.
             if let from = fetchedAt, location.distance(from: from) > Self.refetchMeters { refresh() }
+        } else if needsReloadOnNextFix {
+            needsReloadOnNextFix = false
+            if shouldReloadOnForeground(at: location) {
+                refresh()
+            }
         } else if isStale(location) {
             refresh()
+        }
+    }
+
+    private func updateDistances(to location: CLLocation) {
+        guard let currentStations = stations, !currentStations.isEmpty else { return }
+        let coord = location.coordinate
+        stations = currentStations.map { station in
+            var station = station
+            station.distanceKm = Geo.distanceKm(coord.latitude, coord.longitude, station.latitude, station.longitude)
+            return station
         }
     }
 

@@ -57,17 +57,13 @@ struct StationBrowser: View {
             }
         }
         .onChange(of: isSearchFieldFocused) { _, focused in
-            if focused {
-                withAnimation {
-                    model.isSearching = true
-                }
+            if focused, !model.isSearching {
+                model.isSearching = true
             }
         }
         .onChange(of: model.isSearching) { _, searching in
-            if searching {
-                isSearchFieldFocused = true
-            } else {
-                isSearchFieldFocused = false
+            if isSearchFieldFocused != searching {
+                isSearchFieldFocused = searching
             }
         }
         .onChange(of: model.selectedID) { _, id in
@@ -277,9 +273,7 @@ struct StationBrowser: View {
                     Button("Annuler") {
                         model.filterText = ""
                         isSearchFieldFocused = false
-                        withAnimation {
-                            model.isSearching = false
-                        }
+                        model.isSearching = false
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
                 } else {
@@ -329,14 +323,7 @@ private struct InlineSearchField: View {
                 .font(.footnote)
             TextField(
                 "Rechercher",
-                text: $text,
-                onEditingChanged: { editing in
-                    if editing {
-                        withAnimation {
-                            isSearching = true
-                        }
-                    }
-                }
+                text: $text
             )
             .textFieldStyle(.plain)
             .font(.subheadline)
@@ -359,16 +346,13 @@ private struct InlineSearchField: View {
         .background(Color(.tertiarySystemFill), in: Capsule())
         .contentShape(Capsule())
         .simultaneousGesture(TapGesture().onEnded {
-            withAnimation {
-                isSearching = true
+            if !isFocused {
+                isFocused = true
             }
-            isFocused = true
         })
         .onChange(of: isFocused) { _, focused in
-            if focused {
-                withAnimation {
-                    isSearching = true
-                }
+            if focused, !isSearching {
+                isSearching = true
             }
         }
     }
@@ -392,11 +376,10 @@ private struct SearchableDrawerModifier: ViewModifier {
     }
 }
 
-/// Strip the navigation bar's background so the scroll view shows underneath it.
+/// Strip the navigation bar's background so the scroll view shows underneath it when appropriate.
 private struct ClearNavigationBackground: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .toolbarBackground(.hidden, for: .navigationBar)
     }
 }
 
