@@ -17,7 +17,6 @@ struct ContentView: View {
     @State private var framed = false
     @State private var isPanelVisible = true
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     var body: some View {
         GeometryReader { proxy in
