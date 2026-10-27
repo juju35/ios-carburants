@@ -24,6 +24,7 @@ struct StationBrowser: View {
                 .navigationTitle(inlineSearch ? "" : navigationTitle)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { toolbar }
+                .modifier(DisableVerticalToolbarModifier())
                 .modifier(SearchableDrawerModifier(
                     enabled: !inlineSearch,
                     text: $model.filterText,
@@ -39,6 +40,7 @@ struct StationBrowser: View {
                     }
                 }
         }
+        .modifier(DisableVerticalToolbarModifier())
         .sheet(isPresented: $model.showsFuelPicker) {
             FuelPickerView(selection: model.fuels, navigationApp: model.navigationApp) { fuels, app in
                 model.setFuels(fuels)
@@ -380,6 +382,21 @@ private struct SearchableDrawerModifier: ViewModifier {
 private struct ClearNavigationBackground: ViewModifier {
     func body(content: Content) -> some View {
         content
+    }
+}
+
+/// Disables vertical toolbar rail on iPhone Duo cover screen so toolbar stays horizontal and content fills width.
+struct DisableVerticalToolbarModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        #if !targetEnvironment(macCatalyst)
+        if #available(iOS 27.1, *) {
+            content.toolbarVerticalBehavior(.disabled)
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
     }
 }
 

@@ -147,6 +147,7 @@ struct ContentView: View {
                     .presentationBackgroundInteraction(.enabled(upThrough: Self.middle))
                     .presentationDragIndicator(.visible)
                     .interactiveDismissDisabled()
+                    .modifier(DisableVerticalToolbarModifier())
             }
     }
 }
