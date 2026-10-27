@@ -99,7 +99,7 @@ final class StationsModel {
     // MARK: - Derived
 
     private(set) var visible: [Station] = []
-    private(set) var cheapestPrice: Double? = nil
+    private(set) var cheapestPrice: Double?
 
     private func recomputeDerivedState() {
         let sorted = StationSort.sorted(stations ?? [], by: sort, fuels: fuels)
@@ -288,8 +288,11 @@ final class StationsModel {
         return task
     }
 
-    // MARK: - Loading
+}
 
+// MARK: - Loading
+
+extension StationsModel {
     private func locationChanged(_ location: CLLocation) {
         // Only track and refresh if UI is currently visible
         guard isAppVisible else { return }

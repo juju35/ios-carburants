@@ -1,5 +1,4 @@
 import CarburantsKit
-import MapKit
 import SwiftUI
 
 /// Stations ordered by price or distance, or filtered by a search query.

@@ -53,20 +53,6 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    func requestPermission() { manager.requestWhenInUseAuthorization() }
-
-    /// Asks for the precise location this time, with the reason in Info.plist (NSLocationTemporaryUsageDescriptionDictionary).
-    func requestPrecise() {
-        manager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "NearbyStations")
-    }
-
-    /// Tries again after a failure.
-    func retry() {
-        failed = false
-        manager.stopUpdatingLocation()
-        start()
-    }
-
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
         let approximate = manager.accuracyAuthorization == .reducedAccuracy

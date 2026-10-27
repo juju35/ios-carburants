@@ -81,13 +81,6 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         }
     }
 
-    func sceneWillEnterForeground() {
-        if model.customLocation != nil {
-            model.resetToCurrentLocation()
-        }
-        model.resume()
-    }
-
     /// Renders now, and again after any change to what was read (until the scene goes and this controller with it).
     private func observe() {
         withObservationTracking {
@@ -334,8 +327,23 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         scene?.open(url, options: nil, completionHandler: nil)
     }
 
-    // MARK: - Images
+    // MARK: - CPPointOfInterestTemplateDelegate
 
+    nonisolated func pointOfInterestTemplate(_ template: CPPointOfInterestTemplate, didChangeMapRegion region: MKCoordinateRegion) {}
+
+    nonisolated func pointOfInterestTemplate(
+        _ template: CPPointOfInterestTemplate, didSelectPointOfInterest pointOfInterest: CPPointOfInterest
+    ) {
+        let id = pointOfInterest.userInfo as? Station.ID
+        Task { @MainActor in
+            self.selectedID = id
+        }
+    }
+}
+
+// MARK: - Images
+
+extension CarPlayController {
     @ViewBuilder
     private func cheapestRing(_ station: Station, size: CGFloat) -> some View {
         if model.isCheapest(station) {
@@ -359,18 +367,5 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         guard let image = renderer.uiImage?.withRenderingMode(.alwaysOriginal) else { return nil }
         images[key] = image
         return image
-    }
-
-    // MARK: - CPPointOfInterestTemplateDelegate
-
-    nonisolated func pointOfInterestTemplate(_ template: CPPointOfInterestTemplate, didChangeMapRegion region: MKCoordinateRegion) {}
-
-    nonisolated func pointOfInterestTemplate(
-        _ template: CPPointOfInterestTemplate, didSelectPointOfInterest pointOfInterest: CPPointOfInterest
-    ) {
-        let id = pointOfInterest.userInfo as? Station.ID
-        Task { @MainActor in
-            self.selectedID = id
-        }
     }
 }
