@@ -47,11 +47,52 @@ public enum NavigationApp: String, CaseIterable, Identifiable, Codable, Sendable
     }
 }
 
-/// Choices kept between drives, shared with the widget through the App Group.
+/// Choices kept between drives, shared with the widget through the App Group and mirrored to iCloud
+/// (key-value store), so iPhone, iPad and Mac all follow the same preferences.
 public final class Preferences: @unchecked Sendable {
     public static let shared = Preferences()
 
     private let store = UserDefaults(suiteName: SharedStorage.appGroup) ?? .standard
+    private let cloud = NSUbiquitousKeyValueStore.default
+    /// The keys mirrored to iCloud; `lastLocation` stays on the device.
+    private static let cloudKeys = ["fuels", "sort", "navigationApp", "searchRadiusKm"]
+
+    /// Writes locally (App Group, read by the widgets) and to iCloud for the other devices.
+    private func save(_ value: Any?, forKey key: String) {
+        store.set(value, forKey: key)
+        if Self.cloudKeys.contains(key) { cloud.set(value, forKey: key) }
+    }
+
+    /// Applies the preferences other devices saved: once now, then whenever iCloud delivers new ones.
+    /// App only (extensions cannot rely on the key-value store); `onChange` runs on the main queue.
+    public func startCloudSync(onChange: @escaping @Sendable () -> Void) {
+        NotificationCenter.default.addObserver(
+            forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: cloud, queue: .main
+        ) { [weak self] note in
+            guard let self else { return }
+            let reason = note.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int
+            guard reason == NSUbiquitousKeyValueStoreServerChange || reason == NSUbiquitousKeyValueStoreInitialSyncChange
+            else { return }
+            let keys = (note.userInfo?[NSUbiquitousKeyValueStoreChangedKeysKey] as? [String]) ?? Self.cloudKeys
+            let applied = keys.filter(Self.cloudKeys.contains).filter { self.applyFromCloud($0) }
+            if !applied.isEmpty { onChange() }
+        }
+        // First run on this device: push what it has for the keys iCloud does not know yet, take the others.
+        for key in Self.cloudKeys where cloud.object(forKey: key) == nil {
+            if let value = store.object(forKey: key) { cloud.set(value, forKey: key) }
+        }
+        let applied = Self.cloudKeys.filter { applyFromCloud($0) }
+        cloud.synchronize()
+        if !applied.isEmpty { onChange() }
+    }
+
+    /// Copies one iCloud value into the local store; false when there is nothing new.
+    private func applyFromCloud(_ key: String) -> Bool {
+        guard let value = cloud.object(forKey: key) else { return false }
+        if let current = store.object(forKey: key) as? NSObject, current.isEqual(value) { return false }
+        store.set(value, forKey: key)
+        return true
+    }
 
     public struct SavedLocation: Codable, Sendable {
         public let latitude: Double
@@ -72,17 +113,17 @@ public final class Preferences: @unchecked Sendable {
             let fuels = Fuel.allCases.filter { stored.contains($0.key) }
             return fuels.isEmpty ? [.gazole] : fuels
         }
-        set { store.set(newValue.map(\.key), forKey: "fuels") }
+        set { save(newValue.map(\.key), forKey: "fuels") }
     }
 
     public var sort: StationOrder {
         get { store.string(forKey: "sort").flatMap(StationOrder.init(rawValue:)) ?? .price }
-        set { store.set(newValue.rawValue, forKey: "sort") }
+        set { save(newValue.rawValue, forKey: "sort") }
     }
 
     public var navigationApp: NavigationApp {
         get { store.string(forKey: "navigationApp").flatMap(NavigationApp.init(rawValue:)) ?? .appleMaps }
-        set { store.set(newValue.rawValue, forKey: "navigationApp") }
+        set { save(newValue.rawValue, forKey: "navigationApp") }
     }
 
     /// Search radius choices offered, in km.
@@ -94,7 +135,7 @@ public final class Preferences: @unchecked Sendable {
             let stored = store.integer(forKey: "searchRadiusKm")
             return Self.radiusChoices.contains(stored) ? stored : StationRepository.radiusKm
         }
-        set { store.set(newValue, forKey: "searchRadiusKm") }
+        set { save(newValue, forKey: "searchRadiusKm") }
     }
 
     /// Where the last search was made: the widget falls back on it when it has no location of its own.

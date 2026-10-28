@@ -7,6 +7,8 @@
   CarPlay ; la recherche s'élargit toujours quand il y a peu de stations, partagé avec les widgets
 - Les widgets suivent la préférence de tri de l'application (prix ou distance), comme CarPlay ; l'option de tri
   par widget est retirée
+- Les préférences (carburants, tri, rayon de recherche, application d'itinéraire) se synchronisent entre
+  appareils via iCloud
 
 ### Improvements
 - CarPlay: « Y aller » ouvre directement l'application de navigation choisie dans les réglages (Plans si elle

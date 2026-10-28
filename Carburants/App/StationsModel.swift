@@ -98,6 +98,26 @@ final class StationsModel {
         }
         recomputeDerivedState()
         location.onUpdate = { [weak self] location in self?.locationChanged(location) }
+        preferences.startCloudSync { [weak self] in
+            Task { @MainActor in self?.cloudPreferencesChanged() }
+        }
+    }
+
+    /// Another device changed the preferences through iCloud: reflect them here and in the widgets.
+    private func cloudPreferencesChanged() {
+        sort = preferences.sort
+        navigationApp = preferences.navigationApp
+        let newFuels = preferences.fuels
+        let newRadius = preferences.searchRadiusKm
+        if newFuels != fuels || newRadius != searchRadiusKm {
+            fuels = newFuels
+            searchRadiusKm = newRadius
+            stations = nil
+            selectedID = nil
+            fetchedAt = nil
+            refresh(force: true)
+        }
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     // MARK: - Derived

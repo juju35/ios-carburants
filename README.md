@@ -13,7 +13,8 @@ The iOS counterpart of [aaos-carburants](https://github.com/juju35/aaos-carburan
 - **Station card**: logo, distance, opening status, big *Itinéraire* button (Plans; long press for Google Maps or
   Waze, Plans when they are not installed), price and freshness of your fuels, the other fuels, shortages, hours of the week, services
 - **Fuels**: switch on those your car takes (Gazole, SP95, SP98, E10, E85, GPLc, at least one); sorting by price uses
-  the cheapest of them at each station. Choices are remembered and shared with CarPlay and the widgets
+  the cheapest of them at each station. Choices are remembered and shared with CarPlay and the widgets, and all
+  the preferences (fuels, sort, radius, navigation app) sync through iCloud to your other devices (iPhone, iPad, Mac)
 - **CarPlay** (Fueling category): map of the 12 best stations with *Y aller* (with the travel time, as on the
   iPhone button), list sorted by price or distance, station details, fuel picker. *Y aller* hands the destination
   to the navigation app chosen in the settings (Plans when it is not installed)
@@ -160,6 +161,8 @@ gh variable set APPLE_TEAM_ID --body ABCDE12345
 ```
 
 Each new version is then archived, signed and uploaded; it shows in TestFlight once Apple has processed it.
+The preferences sync uses iCloud key-value storage: the iCloud capability must be on the App ID (Xcode's cloud
+signing registers it on the next archive; check *Certificates, Identifiers & Profiles* if signing fails).
 Builds go out without CarPlay until the `CARPLAY_FUELING` variable is `true` (`gh variable set CARPLAY_FUELING --body
 true`, once Apple has granted the entitlement).
 
