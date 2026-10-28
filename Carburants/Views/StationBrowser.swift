@@ -41,9 +41,12 @@ struct StationBrowser: View {
         }
         .modifier(DisableVerticalToolbarModifier())
         .sheet(isPresented: $model.showsFuelPicker) {
-            FuelPickerView(selection: model.fuels, navigationApp: model.navigationApp) { fuels, app in
+            FuelPickerView(
+                selection: model.fuels, navigationApp: model.navigationApp, searchRadiusKm: model.searchRadiusKm
+            ) { fuels, app, radius in
                 model.setFuels(fuels)
                 model.setNavigationApp(app)
+                model.setSearchRadius(radius)
             }
         }
         .onAppear {

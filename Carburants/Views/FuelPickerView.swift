@@ -1,20 +1,23 @@
 import CarburantsKit
 import SwiftUI
 
-/// Settings: fuels taken by the car, and preferred navigation app for directions.
+/// Settings: fuels taken by the car, search radius, and preferred navigation app for directions.
 struct FuelPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selection: Set<Fuel>
     @State private var navigationApp: NavigationApp
-    private let onDone: ([Fuel], NavigationApp) -> Void
+    @State private var searchRadiusKm: Int
+    private let onDone: ([Fuel], NavigationApp, Int) -> Void
 
     init(
         selection: [Fuel],
         navigationApp: NavigationApp = Preferences.shared.navigationApp,
-        onDone: @escaping ([Fuel], NavigationApp) -> Void
+        searchRadiusKm: Int = Preferences.shared.searchRadiusKm,
+        onDone: @escaping ([Fuel], NavigationApp, Int) -> Void
     ) {
         self.selection = Set(selection)
         self._navigationApp = State(initialValue: navigationApp)
+        self._searchRadiusKm = State(initialValue: searchRadiusKm)
         self.onDone = onDone
     }
 
@@ -44,6 +47,19 @@ struct FuelPickerView: View {
                 }
 
                 Section {
+                    Picker("Rayon de recherche", selection: $searchRadiusKm) {
+                        ForEach(Preferences.radiusChoices, id: \.self) { radius in
+                            Text("\(radius) km").tag(radius)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("Rayon de recherche")
+                } footer: {
+                    Text("Distance autour de vous ; la recherche s’élargit s’il y a peu de stations.")
+                }
+
+                Section {
                     Picker("Application d’itinéraire", selection: $navigationApp) {
                         ForEach(NavigationApp.allCases) { app in
                             Label(app.title, systemImage: app.symbol).tag(app)
@@ -64,7 +80,7 @@ struct FuelPickerView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("OK") {
-                        onDone(Fuel.allCases.filter(selection.contains), navigationApp)
+                        onDone(Fuel.allCases.filter(selection.contains), navigationApp, searchRadiusKm)
                         dismiss()
                     }
                     .fontWeight(.semibold)
@@ -84,5 +100,5 @@ struct FuelPickerView: View {
 }
 
 #Preview {
-    FuelPickerView(selection: [.gazole], navigationApp: .appleMaps) { _, _ in }
+    FuelPickerView(selection: [.gazole], navigationApp: .appleMaps, searchRadiusKm: 10) { _, _, _ in }
 }

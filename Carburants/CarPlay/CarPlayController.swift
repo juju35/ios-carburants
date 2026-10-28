@@ -34,6 +34,7 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
     private var listSort: StationOrder?
     private var pickerFuels: [Fuel]?
     private var pickerNavigationApp: NavigationApp?
+    private var pickerRadiusKm: Int?
     /// The place the driver opened on the map, kept selected across rebuilds.
     private var selectedID: Station.ID?
     /// Travel times by car shown on the "Y aller" buttons, as on the iPhone; refreshed when older than 2 minutes.
@@ -143,13 +144,17 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         }
 
         let currentNavApp = model.navigationApp
-        if fuels != pickerFuels || currentNavApp != pickerNavigationApp {
+        let currentRadius = model.searchRadiusKm
+        if fuels != pickerFuels || currentNavApp != pickerNavigationApp || currentRadius != pickerRadiusKm {
             pickerFuels = fuels
             pickerNavigationApp = currentNavApp
+            pickerRadiusKm = currentRadius
             let fuelItems = Fuel.allCases.map { fuelItem($0, chosen: fuels.contains($0)) }
+            let radiusItems = Preferences.radiusChoices.map { radiusItem($0, chosen: currentRadius == $0) }
             let navItems = availableNavigationApps().map { navigationItem($0, chosen: currentNavApp == $0) }
             fuelTemplate.updateSections([
                 CPListSection(items: fuelItems, header: "Carburants de votre véhicule", sectionIndexTitle: nil),
+                CPListSection(items: radiusItems, header: "Rayon de recherche", sectionIndexTitle: nil),
                 CPListSection(items: navItems, header: "Application de navigation", sectionIndexTitle: nil),
             ])
         }
@@ -165,6 +170,21 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         )
         item.handler = { [weak self] _, completion in
             self?.model.toggleFuel(fuel)
+            completion()
+        }
+        return item
+    }
+
+    private func radiusItem(_ radius: Int, chosen: Bool) -> CPListItem {
+        let item = CPListItem(
+            text: "\(radius) km",
+            detailText: nil,
+            image: UIImage(systemName: "location.circle"),
+            accessoryImage: chosen ? UIImage(systemName: "checkmark") : nil,
+            accessoryType: .none
+        )
+        item.handler = { [weak self] _, completion in
+            self?.model.setSearchRadius(radius)
             completion()
         }
         return item

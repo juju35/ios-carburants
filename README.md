@@ -20,8 +20,9 @@ The iOS counterpart of [aaos-carburants](https://github.com/juju35/aaos-carburan
 - **Widgets**: the cheapest station (small, also shown in CarPlay), 3 / 6 / 8 stations (medium, large, extra large
   on iPad and iPhone Duo), best price on the Lock Screen (rectangular, inline, circular). Each widget can follow
   your fuels or show one in particular; tapping a station opens it in the app
-- Automatic refresh after 2 km or 10 minutes, pull to refresh; 10 km radius, widened to 30 km when there are fewer
-  than 3 stations. Dark mode, Dynamic Type and VoiceOver labels throughout
+- Automatic refresh after 2 km or 10 minutes, pull to refresh; search radius of your choice (5 to 50 km, 10 km by
+  default, set on the iPhone or in the CarPlay settings), widened when there are fewer than 3 stations. Dark mode,
+  Dynamic Type and VoiceOver labels throughout
 
 ## Screenshots
 

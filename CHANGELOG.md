@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### New
+- Rayon de recherche configurable (5, 10, 20, 30 ou 50 km), dans les préférences iPhone et dans les réglages
+  CarPlay ; la recherche s'élargit toujours quand il y a peu de stations, partagé avec les widgets
+
 ### Improvements
 - CarPlay: « Y aller » ouvre directement l'application de navigation choisie dans les réglages (Plans si elle
   n'est pas installée), sans demander laquelle utiliser

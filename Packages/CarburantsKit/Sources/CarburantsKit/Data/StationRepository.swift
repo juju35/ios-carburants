@@ -5,8 +5,10 @@ import Foundation
 public actor StationRepository {
     public static let shared = StationRepository()
 
+    /// Default search radius, used when no choice was saved.
     public static let radiusKm = 10
-    public static let wideRadiusKm = 30
+    /// Largest radius the search ever widens to.
+    public static let maxRadiusKm = 50
     private static let minResults = 3
     // The list must not wait long for the names file: names that come later are added by enrich().
     private static let namesWait: Duration = .milliseconds(2500)
@@ -53,13 +55,18 @@ public actor StationRepository {
         }
     }
 
-    /// Nearest stations selling one of `fuels`, within 10 km, widened to 30 km when there are few.
-    /// `withNamesFile: false` names them from the cached OpenStreetMap brands only (widget).
-    public func nearby(latitude: Double, longitude: Double, fuels: [Fuel], withNamesFile: Bool = true) async throws -> SearchResult {
-        var radius = Self.radiusKm
+    /// Nearest stations selling one of `fuels`, within the chosen radius (10 km by default), widened
+    /// (tripled, up to 50 km) when there are few. `withNamesFile: false` names them from the cached
+    /// OpenStreetMap brands only (widget).
+    public func nearby(
+        latitude: Double, longitude: Double, fuels: [Fuel],
+        radiusKm: Int = Preferences.shared.searchRadiusKm, withNamesFile: Bool = true
+    ) async throws -> SearchResult {
+        var radius = radiusKm
         var list = try await CarburantsAPI.nearby(latitude: latitude, longitude: longitude, radiusKm: radius, fuels: fuels)
-        if list.filter({ $0.sellsAny(fuels) }).count < Self.minResults {
-            radius = Self.wideRadiusKm
+        let wideRadius = min(radiusKm * 3, Self.maxRadiusKm)
+        if list.filter({ $0.sellsAny(fuels) }).count < Self.minResults, wideRadius > radius {
+            radius = wideRadius
             list = try await CarburantsAPI.nearby(latitude: latitude, longitude: longitude, radiusKm: radius, fuels: fuels)
         }
         var names: [String: StationNames.Entry] = [:]

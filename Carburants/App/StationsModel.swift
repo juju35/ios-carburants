@@ -24,6 +24,8 @@ final class StationsModel {
         didSet { recomputeDerivedState() }
     }
     private(set) var navigationApp: NavigationApp
+    /// Chosen search radius; `radiusKm` is the one effectively used (widened when few stations are found).
+    private(set) var searchRadiusKm: Int
     /// nil until a first search returns.
     private(set) var stations: [Station]? {
         didSet { recomputeDerivedState() }
@@ -77,6 +79,7 @@ final class StationsModel {
             fuels = [.gazole, .e10]
             sort = .price
             navigationApp = .appleMaps
+            searchRadiusKm = StationRepository.radiusKm
             stations = Station.samples
             updatedAt = .now.addingTimeInterval(-4 * 60)
             recomputeDerivedState()
@@ -85,6 +88,7 @@ final class StationsModel {
         fuels = preferences.fuels
         sort = preferences.sort
         navigationApp = preferences.navigationApp
+        searchRadiusKm = preferences.searchRadiusKm
         // Last list for an instant start, when recent and for the same fuels; distances refresh with the next search.
         if let snapshot = Snapshot.load(), snapshot.fuels == preferences.fuels, Date().timeIntervalSince(snapshot.date) < 30 * 60 {
             stations = snapshot.stations
@@ -233,6 +237,17 @@ final class StationsModel {
         guard newValue != navigationApp else { return }
         navigationApp = newValue
         preferences.navigationApp = newValue
+    }
+
+    func setSearchRadius(_ newValue: Int) {
+        guard Preferences.radiusChoices.contains(newValue), newValue != searchRadiusKm else { return }
+        searchRadiusKm = newValue
+        preferences.searchRadiusKm = newValue
+        stations = nil
+        selectedID = nil
+        fetchedAt = nil
+        refresh(force: true)
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     func toggleFuel(_ fuel: Fuel) {

@@ -85,6 +85,18 @@ public final class Preferences: @unchecked Sendable {
         set { store.set(newValue.rawValue, forKey: "navigationApp") }
     }
 
+    /// Search radius choices offered, in km.
+    public static let radiusChoices = [5, 10, 20, 30, 50]
+
+    /// Radius of the station search around the position, in km; the search still widens when few stations are found.
+    public var searchRadiusKm: Int {
+        get {
+            let stored = store.integer(forKey: "searchRadiusKm")
+            return Self.radiusChoices.contains(stored) ? stored : StationRepository.radiusKm
+        }
+        set { store.set(newValue, forKey: "searchRadiusKm") }
+    }
+
     /// Where the last search was made: the widget falls back on it when it has no location of its own.
     public var lastLocation: SavedLocation? {
         get { store.data(forKey: "lastLocation").flatMap { try? JSONDecoder().decode(SavedLocation.self, from: $0) } }
