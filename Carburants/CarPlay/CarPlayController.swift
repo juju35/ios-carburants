@@ -316,58 +316,6 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         }
     }
 
-    /// Opens the navigation app chosen in the settings, without asking; Plans when it is not installed.
-    private func navigate(to station: Station) {
-        let preferred = model.navigationApp
-        let app = availableNavigationApps().contains(preferred) ? preferred : .appleMaps
-        openNavigationApp(app, for: station)
-    }
-
-    /// "Y aller", with the travel time once known, as on the iPhone button.
-    private func goTitle(for station: Station) -> String {
-        guard let eta = travelTime(for: station) else { return "Y aller" }
-        return "Y aller · \(Format.duration(eta))"
-    }
-
-    private func travelTime(for station: Station) -> TimeInterval? {
-        guard let cached = travelTimes[station.id], Date.now.timeIntervalSince(cached.date) < 120 else { return nil }
-        return cached.eta
-    }
-
-    /// Fetches the ETA once per station (then every 2 minutes), and calls `onUpdate` when it lands.
-    private func loadTravelTimeIfNeeded(for station: Station, onUpdate: @escaping @MainActor () -> Void) {
-        guard travelTime(for: station) == nil, !pendingETAs.contains(station.id) else { return }
-        pendingETAs.insert(station.id)
-        Task { [weak self] in
-            let request = MKDirections.Request()
-            request.source = .forCurrentLocation()
-            request.destination = Directions.mapItem(for: station)
-            request.transportType = .automobile
-            let response = try? await MKDirections(request: request).calculateETA()
-            guard let self else { return }
-            self.pendingETAs.remove(station.id)
-            guard let response else { return }
-            self.travelTimes[station.id] = (response.expectedTravelTime, .now)
-            onUpdate()
-        }
-    }
-
-    private func availableNavigationApps() -> [NavigationApp] {
-        var apps: [NavigationApp] = [.appleMaps]
-        if let gmaps = URL(string: "comgooglemaps://"), UIApplication.shared.canOpenURL(gmaps) {
-            apps.append(.googleMaps)
-        }
-        if let waze = URL(string: "waze://"), UIApplication.shared.canOpenURL(waze) {
-            apps.append(.waze)
-        }
-        return apps
-    }
-
-    private func openNavigationApp(_ app: NavigationApp, for station: Station) {
-        let url = app.url(for: station)
-        scene?.open(url, options: nil, completionHandler: nil)
-    }
-
     // MARK: - CPPointOfInterestTemplateDelegate
 
     nonisolated func pointOfInterestTemplate(_ template: CPPointOfInterestTemplate, didChangeMapRegion region: MKCoordinateRegion) {}
@@ -384,6 +332,57 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
                 self?.pointsContent = nil
                 self?.render()
             }
+        }
+    }
+}
+
+// MARK: - Directions
+
+extension CarPlayController {
+    /// Opens the navigation app chosen in the settings, without asking; Plans when it is not installed.
+    func navigate(to station: Station) {
+        let preferred = model.navigationApp
+        let app = availableNavigationApps().contains(preferred) ? preferred : .appleMaps
+        scene?.open(app.url(for: station), options: nil, completionHandler: nil)
+    }
+
+    func availableNavigationApps() -> [NavigationApp] {
+        var apps: [NavigationApp] = [.appleMaps]
+        if let gmaps = URL(string: "comgooglemaps://"), UIApplication.shared.canOpenURL(gmaps) {
+            apps.append(.googleMaps)
+        }
+        if let waze = URL(string: "waze://"), UIApplication.shared.canOpenURL(waze) {
+            apps.append(.waze)
+        }
+        return apps
+    }
+
+    /// "Y aller", with the travel time once known, as on the iPhone button.
+    func goTitle(for station: Station) -> String {
+        guard let eta = travelTime(for: station) else { return "Y aller" }
+        return "Y aller · \(Format.duration(eta))"
+    }
+
+    private func travelTime(for station: Station) -> TimeInterval? {
+        guard let cached = travelTimes[station.id], Date.now.timeIntervalSince(cached.date) < 120 else { return nil }
+        return cached.eta
+    }
+
+    /// Fetches the ETA once per station (then every 2 minutes), and calls `onUpdate` when it lands.
+    func loadTravelTimeIfNeeded(for station: Station, onUpdate: @escaping @MainActor () -> Void) {
+        guard travelTime(for: station) == nil, !pendingETAs.contains(station.id) else { return }
+        pendingETAs.insert(station.id)
+        Task { [weak self] in
+            let request = MKDirections.Request()
+            request.source = .forCurrentLocation()
+            request.destination = Directions.mapItem(for: station)
+            request.transportType = .automobile
+            let response = try? await MKDirections(request: request).calculateETA()
+            guard let self else { return }
+            self.pendingETAs.remove(station.id)
+            guard let response else { return }
+            self.travelTimes[station.id] = (response.expectedTravelTime, .now)
+            onUpdate()
         }
     }
 }
