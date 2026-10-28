@@ -328,7 +328,7 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
             self.selectedID = id
             // The "Y aller" button is visible once the place is selected: fetch its travel time now.
             guard let id, let station = self.pointsContent?.stations.first(where: { $0.id == id }) else { return }
-            self.loadTravelTimeIfNeeded(for: station) { [weak self] in
+            self.loadTravelTimeIfNeeded(for: station) { [weak self = self] in
                 self?.pointsContent = nil
                 self?.render()
             }
