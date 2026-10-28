@@ -60,7 +60,8 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         mapTemplate.tabImage = UIImage(systemName: "map.fill")
         listTemplate.tabTitle = "Liste"
         listTemplate.tabImage = UIImage(systemName: "list.bullet")
-        fuelTemplate.tabTitle = "Réglages"
+        // Icon only: an empty title (nil would fall back to the template title).
+        fuelTemplate.tabTitle = ""
         fuelTemplate.tabImage = UIImage(systemName: "gearshape.fill")
 
         let tabs = CPTabBarTemplate(templates: [mapTemplate, listTemplate, fuelTemplate])
