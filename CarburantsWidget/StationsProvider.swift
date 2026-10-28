@@ -22,26 +22,6 @@ enum WidgetFuel: String, AppEnum {
     }
 }
 
-/// Sorting order in widget configuration.
-enum WidgetSort: String, AppEnum {
-    case app, price, distance
-
-    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Tri"
-    static let caseDisplayRepresentations: [WidgetSort: DisplayRepresentation] = [
-        .app: "Selon l’application",
-        .price: "Prix le plus bas",
-        .distance: "Distance",
-    ]
-
-    func resolved(fallback: StationOrder) -> StationOrder {
-        switch self {
-        case .app: return fallback
-        case .price: return .price
-        case .distance: return .distance
-        }
-    }
-}
-
 struct StationsIntent: WidgetConfigurationIntent {
     static let title: LocalizedStringResource = "Stations à proximité"
     // swiftlint:disable:next unused_declaration - shown by the system in the widget's settings
@@ -53,20 +33,15 @@ struct StationsIntent: WidgetConfigurationIntent {
     @Parameter(title: "Carburants")
     var customFuels: [WidgetFuel]?
 
-    @Parameter(title: "Trier par", default: .app)
-    var sort: WidgetSort
-
     static var parameterSummary: some ParameterSummary {
         When(\.$useAppFuels, .equalTo, false) {
             Summary {
                 \.$useAppFuels
                 \.$customFuels
-                \.$sort
             }
         } otherwise: {
             Summary {
                 \.$useAppFuels
-                \.$sort
             }
         }
     }
@@ -77,10 +52,6 @@ struct StationsIntent: WidgetConfigurationIntent {
         }
         let list = (customFuels ?? []).map(\.fuel)
         return list.isEmpty ? Preferences.shared.fuels : list
-    }
-
-    var resolvedSort: StationOrder {
-        sort.resolved(fallback: Preferences.shared.sort)
     }
 }
 
@@ -181,11 +152,11 @@ struct StationsProvider: AppIntentTimelineProvider {
 
     func snapshot(for configuration: StationsIntent, in context: Context) async -> StationsEntry {
         if context.isPreview { return .sample }
-        return await load(fuels: configuration.resolvedFuels, sort: configuration.resolvedSort)
+        return await load(fuels: configuration.resolvedFuels, sort: Preferences.shared.sort)
     }
 
     func timeline(for configuration: StationsIntent, in context: Context) async -> Timeline<StationsEntry> {
-        let entry = await load(fuels: configuration.resolvedFuels, sort: configuration.resolvedSort)
+        let entry = await load(fuels: configuration.resolvedFuels, sort: Preferences.shared.sort)
         return Timeline(entries: Self.entries(from: entry), policy: .after(.now.addingTimeInterval(Self.refresh)))
     }
 
