@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Improvements
+- CarPlay: « Y aller » ouvre directement l'application de navigation choisie dans les réglages (Plans si elle
+  n'est pas installée), sans demander laquelle utiliser
+- CarPlay: le bouton « Y aller » affiche la durée de trajet, comme le bouton Itinéraire sur iPhone
+
 ## 1.3.0
 
 ### Improvements

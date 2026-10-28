@@ -36,6 +36,9 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
     private var pickerNavigationApp: NavigationApp?
     /// The place the driver opened on the map, kept selected across rebuilds.
     private var selectedID: Station.ID?
+    /// Travel times by car shown on the "Y aller" buttons, as on the iPhone; refreshed when older than 2 minutes.
+    private var travelTimes: [Station.ID: (eta: TimeInterval, date: Date)] = [:]
+    private var pendingETAs: Set<Station.ID> = []
     /// Rendered logos and badges, by station or fuel; emptied when downloaded logos arrive.
     private var images: [String: UIImage] = [:]
     private var imagesRevision = -1
@@ -232,7 +235,7 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
             selectedPinImage: selectedPin
         )
         point.userInfo = station.id
-        point.primaryButton = CPTextButton(title: "Y aller", textStyle: .confirm) { [weak self] _ in
+        point.primaryButton = CPTextButton(title: goTitle(for: station), textStyle: .confirm) { [weak self] _ in
             self?.navigate(to: station)
         }
         point.secondaryButton = CPTextButton(title: "Détails", textStyle: .normal) { [weak self] _ in
@@ -278,37 +281,55 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         if let opening = Opening.of(station) { items.append(CPInformationItem(title: "Horaires", detail: opening.text)) }
         if let distance = station.distanceKm { items.append(CPInformationItem(title: "Distance", detail: Format.distance(distance))) }
 
-        let go = CPTextButton(title: "Y aller", textStyle: .confirm) { [weak self] _ in self?.navigate(to: station) }
+        let go = CPTextButton(title: goTitle(for: station), textStyle: .confirm) { [weak self] _ in self?.navigate(to: station) }
         let template = CPInformationTemplate(
             title: station.name, layout: .twoColumn, items: Array(items.prefix(10)), actions: [go]
         )
         interface.pushTemplate(template, animated: true, completion: nil)
+        loadTravelTimeIfNeeded(for: station) { [weak self, weak template] in
+            guard let self, let template else { return }
+            template.actions = [
+                CPTextButton(title: self.goTitle(for: station), textStyle: .confirm) { [weak self] _ in
+                    self?.navigate(to: station)
+                }
+            ]
+        }
     }
 
-    /// Prompts the driver to choose which navigation app to open (or opens the single one), then launches it.
+    /// Opens the navigation app chosen in the settings, without asking; Plans when it is not installed.
     private func navigate(to station: Station) {
-        let apps = availableNavigationApps()
-        if apps.count <= 1 {
-            openNavigationApp(apps.first ?? .appleMaps, for: station)
-            return
-        }
+        let preferred = model.navigationApp
+        let app = availableNavigationApps().contains(preferred) ? preferred : .appleMaps
+        openNavigationApp(app, for: station)
+    }
 
-        var actions: [CPAlertAction] = apps.map { app in
-            CPAlertAction(title: app.title, style: .default) { [weak self] _ in
-                self?.model.setNavigationApp(app)
-                self?.openNavigationApp(app, for: station)
-            }
-        }
-        actions.append(CPAlertAction(title: "Annuler", style: .cancel) { [weak self] _ in
-            self?.interface.dismissTemplate(animated: true, completion: nil)
-        })
+    /// "Y aller", with the travel time once known, as on the iPhone button.
+    private func goTitle(for station: Station) -> String {
+        guard let eta = travelTime(for: station) else { return "Y aller" }
+        return "Y aller · \(Format.duration(eta))"
+    }
 
-        let actionSheet = CPActionSheetTemplate(
-            title: "Itinéraire",
-            message: station.name,
-            actions: actions
-        )
-        interface.presentTemplate(actionSheet, animated: true, completion: nil)
+    private func travelTime(for station: Station) -> TimeInterval? {
+        guard let cached = travelTimes[station.id], Date.now.timeIntervalSince(cached.date) < 120 else { return nil }
+        return cached.eta
+    }
+
+    /// Fetches the ETA once per station (then every 2 minutes), and calls `onUpdate` when it lands.
+    private func loadTravelTimeIfNeeded(for station: Station, onUpdate: @escaping @MainActor () -> Void) {
+        guard travelTime(for: station) == nil, !pendingETAs.contains(station.id) else { return }
+        pendingETAs.insert(station.id)
+        Task { [weak self] in
+            let request = MKDirections.Request()
+            request.source = .forCurrentLocation()
+            request.destination = Directions.mapItem(for: station)
+            request.transportType = .automobile
+            let response = try? await MKDirections(request: request).calculateETA()
+            guard let self else { return }
+            self.pendingETAs.remove(station.id)
+            guard let response else { return }
+            self.travelTimes[station.id] = (response.expectedTravelTime, .now)
+            onUpdate()
+        }
     }
 
     private func availableNavigationApps() -> [NavigationApp] {
@@ -337,6 +358,12 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         let id = pointOfInterest.userInfo as? Station.ID
         Task { @MainActor in
             self.selectedID = id
+            // The "Y aller" button is visible once the place is selected: fetch its travel time now.
+            guard let id, let station = self.pointsContent?.stations.first(where: { $0.id == id }) else { return }
+            self.loadTravelTimeIfNeeded(for: station) { [weak self] in
+                self?.pointsContent = nil
+                self?.render()
+            }
         }
     }
 }

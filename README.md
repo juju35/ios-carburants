@@ -14,8 +14,9 @@ The iOS counterpart of [aaos-carburants](https://github.com/juju35/aaos-carburan
   Waze, Plans when they are not installed), price and freshness of your fuels, the other fuels, shortages, hours of the week, services
 - **Fuels**: switch on those your car takes (Gazole, SP95, SP98, E10, E85, GPLc, at least one); sorting by price uses
   the cheapest of them at each station. Choices are remembered and shared with CarPlay and the widgets
-- **CarPlay** (Fueling category): map of the 12 best stations with *Y aller*, list sorted by price or distance,
-  station details, fuel picker. *Y aller* hands the destination to Plans
+- **CarPlay** (Fueling category): map of the 12 best stations with *Y aller* (with the travel time, as on the
+  iPhone button), list sorted by price or distance, station details, fuel picker. *Y aller* hands the destination
+  to the navigation app chosen in the settings (Plans when it is not installed)
 - **Widgets**: the cheapest station (small, also shown in CarPlay), 3 / 6 / 8 stations (medium, large, extra large
   on iPad and iPhone Duo), best price on the Lock Screen (rectangular, inline, circular). Each widget can follow
   your fuels or show one in particular; tapping a station opens it in the app
