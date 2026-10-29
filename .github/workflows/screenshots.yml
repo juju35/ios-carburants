@@ -130,7 +130,8 @@ jobs:
           touch "$RUNNER_TEMP/start"
           APP="$RUNNER_TEMP/Carburants.app" ONLY=carplay scripts/screenshots.sh
           # Kept screenshots are the previous ones: only new ones count.
-          if find appstore/screenshots/carplay -name '*.png' -newer "$RUNNER_TEMP/start" | grep -q .; then
+          # (Not find | grep -q: under pipefail, find killed by SIGPIPE fails the test.)
+          if [ -n "$(find appstore/screenshots/carplay -name '*.png' -newer "$RUNNER_TEMP/start")" ]; then
             touch build/carplay-debug/taken
           fi
 
