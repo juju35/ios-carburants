@@ -118,10 +118,10 @@ launch() {
 # retry <command...>: duoctl sometimes fails to reach the simulator right after a fold; tried again a few times.
 retry() {
   local attempt
-  for attempt in 1 2 3; do
+  for attempt in 1 2 3 4; do
     if (trap - ERR; "$@"); then return 0; fi
     echo "$* failed ($attempt), trying again"
-    sleep 5
+    sleep 10
   done
   "$@"
 }
@@ -129,7 +129,7 @@ retry() {
 # iPhone Duo: closed (cover screen), open flat (inner screen, side panel), half folded (list and map on either side
 # of the fold). duoctl screenshots the screen in use.
 shoot_duo() {
-  local dir="$OUT/iphone-duo" runtime udid
+  local dir="$OUT/iphone-duo.new" runtime udid
   runtime=$(xcrun simctl list runtimes -j | python3 -c '
 import json, sys
 ids = [r["identifier"] for r in json.load(sys.stdin)["runtimes"] if r.get("isAvailable") and r["identifier"].startswith("com.apple.CoreSimulator.SimRuntime.iOS-")]
@@ -160,7 +160,10 @@ print(ok[-1] if ok else "")')
   retry duoctl hinge 120 --duration 1
   sleep "$DELAY"
   duoctl screenshot "$dir/04-half-tabletop.png"
-  ls "$dir"/*.png
+  # Taken aside, the previous ones replaced only once all four are there.
+  rm -rf "$OUT/iphone-duo"
+  mv "$dir" "$OUT/iphone-duo"
+  ls "$OUT/iphone-duo"/*.png
 }
 
 # CarPlay: the Simulator's CarPlay screen (I/O › External Displays › CarPlay). Xcode 27's Device Hub has no CarPlay
@@ -236,10 +239,19 @@ for part in ${only//,/ }; do
     build) exit 0 ;;
     iphone) shoot "$IPHONE" iphone-6.9 list:light detail:light fuels:light list:dark detail:dark ;;
     ipad) shoot "$IPAD" ipad-13 list:light detail:light list:dark ;;
-    duo) shoot_duo ;;
+    # duoctl drives private simulator interfaces and fails at times: in a process of its own, so that a failure
+    # keeps the previous iPhone Duo screenshots without losing the others.
+    duo)
+      if [ -n "${DUO_ONLY:-}" ]; then
+        shoot_duo
+      elif ! APP="$app" ONLY=duo DUO_ONLY=1 scripts/screenshots.sh; then
+        rm -rf "$OUT/iphone-duo.new"
+        echo "::warning title=iPhone Duo screenshots::duoctl failed, previous ones kept"
+      fi
+      ;;
     carplay) shoot_carplay ;;
     *) echo "Unknown ONLY part: $part" >&2; exit 2 ;;
   esac
 done
 
-python3 scripts/screenshots_post.py "$OUT" screenshots
+[ -n "${DUO_ONLY:-}" ] || python3 scripts/screenshots_post.py "$OUT" screenshots
