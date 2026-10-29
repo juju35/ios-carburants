@@ -49,6 +49,23 @@ def open_window() -> None:
     )
 
 
+def arrange_windows() -> None:
+    """The CarPlay window top left, the device's window to its right: where they overlap, a click meant for the CarPlay
+    screen can land on the device's screen instead."""
+    osascript(
+        'tell application "Simulator" to activate\n'
+        'tell application "System Events" to tell process "Simulator"\n'
+        '  set carplay to first window whose name contains "CarPlay"\n'
+        "  set position of carplay to {0, 40}\n"
+        "  set {width, height} to size of carplay\n"
+        '  repeat with other in (windows whose name does not contain "CarPlay")\n'
+        "    set position of other to {width + 60, 40}\n"
+        "  end repeat\n"
+        '  perform action "AXRaise" of carplay\n'
+        "end tell"
+    )
+
+
 def window_bounds() -> tuple[int, int, int, int]:
     text = osascript(
         'tell application "Simulator" to activate\n'
@@ -123,6 +140,7 @@ def tap(udid: str, debug: Path) -> None:
     if icon is None:
         raise SystemExit(f"No Carburants icon on the CarPlay home screen, see {debug}")
     print(f"Icon at {icon[0]:.0f},{icon[1]:.0f}")
+    arrange_windows()
     # A click on a window that is not key only makes it key: raising the window again before each try (as
     # click_on does) can eat every click. Every other try clicks the same point again without raising it.
     after = debug.with_name(debug.stem + "-after.png")
@@ -139,6 +157,8 @@ def tap(udid: str, debug: Path) -> None:
             if grid_icon(screen) is None and drawn(screen):
                 return
         print(f"Click {attempt + 1}: the app's screen did not show")
+    # The whole Mac screen, to see where the clicks went.
+    subprocess.run(["screencapture", "-x", str(debug.with_name("mac-screen.png"))], check=False)
     raise SystemExit(f"The click at {point} did not open Carburants on the CarPlay screen, see {after}")
 
 
