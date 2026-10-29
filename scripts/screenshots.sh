@@ -230,6 +230,8 @@ print(sorted(ids)[-1] if ids else "")')
   done
   rm -rf "$dir"
   mv "$tmp" "$dir"
+  # For the Screenshots workflow: this runner took new ones (the others keep the previous ones).
+  touch build/carplay-debug/taken
   ls "$dir"/*.png
 }
 

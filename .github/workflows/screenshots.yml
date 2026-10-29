@@ -127,13 +127,8 @@ jobs:
       - name: Take screenshots
         run: |
           ditto -x -k "$RUNNER_TEMP/app.zip" "$RUNNER_TEMP"
-          touch "$RUNNER_TEMP/start"
+          # build/carplay-debug/taken when this runner took new ones.
           APP="$RUNNER_TEMP/Carburants.app" ONLY=carplay scripts/screenshots.sh
-          # Kept screenshots are the previous ones: only new ones count.
-          # (Not find | grep -q: under pipefail, find killed by SIGPIPE fails the test.)
-          if [ -n "$(find appstore/screenshots/carplay -name '*.png' -newer "$RUNNER_TEMP/start")" ]; then
-            touch build/carplay-debug/taken
-          fi
 
       # The screenshots, with what the CarPlay screen showed before each tap, to see what went wrong.
       - if: always()
