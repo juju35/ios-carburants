@@ -29,6 +29,9 @@ HOME_DIFFERENCE = 1200.0
 # The left bar's home button, and the mean edge strength above which the app's screen is drawn (about 2 while blank,
 # 14 with the map or a list).
 HOME_BUTTON = (52, 428)
+# Centre of the grid's first icon and the distance between icons (CarPlay screen points).
+GRID_FIRST = (202, 100)
+GRID_STEP = (167, 180)
 MIN_EDGES = 5.0
 
 
@@ -141,9 +144,20 @@ def tap(udid: str, debug: Path) -> None:
         raise SystemExit(f"No Carburants icon on the CarPlay home screen, see {debug}")
     print(f"Icon at {icon[0]:.0f},{icon[1]:.0f}")
     arrange_windows()
+    after = debug.with_name(debug.stem + "-after.png")
+    # As with a car's knob: the focus starts on the grid's first app, moved to the icon with the arrow keys.
+    keys = [124] * grid_column(icon) + [125] * grid_row(icon) + [36]
+    print(f"Keyboard focus: key codes {keys}")
+    press(keys)
+    for _ in range(6):
+        time.sleep(2)
+        screen = capture(udid, after)
+        if grid_icon(screen) is None and drawn(screen):
+            print("::notice title=CarPlay screenshots::Carburants opened with the keyboard")
+            return
+    print("Keyboard: the app's screen did not show, clicking instead")
     # A click on a window that is not key only makes it key: raising the window again before each try (as
     # click_on does) can eat every click. Every other try clicks the same point again without raising it.
-    after = debug.with_name(debug.stem + "-after.png")
     point = (0, 0)
     for attempt in range(4):
         if attempt % 2 == 0:
@@ -155,11 +169,35 @@ def tap(udid: str, debug: Path) -> None:
             time.sleep(2)
             screen = capture(udid, after)
             if grid_icon(screen) is None and drawn(screen):
+                print(f"::notice title=CarPlay screenshots::Carburants opened with click {attempt + 1}")
                 return
         print(f"Click {attempt + 1}: the app's screen did not show")
     # The whole Mac screen, to see where the clicks went.
     subprocess.run(["screencapture", "-x", "-C", str(debug.with_name("mac-screen.png"))], check=False)
     raise SystemExit(f"The click at {point} did not open Carburants on the CarPlay screen, see {after}")
+
+
+def grid_column(icon: tuple[float, float]) -> int:
+    """Column of the icon in the home screen's grid (4 apps a row, about 167 points apart from x 202)."""
+    return max(0, round((icon[0] - GRID_FIRST[0]) / GRID_STEP[0]))
+
+
+def grid_row(icon: tuple[float, float]) -> int:
+    """Row of the icon in the home screen's grid (about 180 points apart from y 100)."""
+    return max(0, round((icon[1] - GRID_FIRST[1]) / GRID_STEP[1]))
+
+
+def press(key_codes: list[int]) -> None:
+    """Keys typed into the CarPlay window, raised first: the arrows move the focus, Return opens."""
+    keys = "\n".join(f"  key code {code}\n  delay 0.6" for code in key_codes)
+    osascript(
+        'tell application "Simulator" to activate\n'
+        'tell application "System Events" to tell process "Simulator"\n'
+        '  perform action "AXRaise" of (first window whose name contains "CarPlay")\n'
+        "  delay 0.5\n"
+        f"{keys}\n"
+        "end tell"
+    )
 
 
 def click_on(point: tuple[float, float], screen: Image.Image) -> tuple[int, int]:
