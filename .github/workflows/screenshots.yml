@@ -102,10 +102,17 @@ jobs:
             appstore/screenshots/iphone-duo
 
   # Xcode 27's Device Hub has no CarPlay for simulators: Xcode 26's Simulator app, on macOS 26.
+  # On some runners the CarPlay screen takes no input at all (clicks and keys land on the app's icon and nothing
+  # happens, on every new simulator of that runner), on others it works: 4 runners at once, the first one that took the
+  # screenshots wins (the repository is public, macOS runners cost nothing).
   carplay:
     needs: app
     if: inputs.only != 'devices'
     runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v7
 
@@ -120,19 +127,18 @@ jobs:
       - name: Take screenshots
         run: |
           ditto -x -k "$RUNNER_TEMP/app.zip" "$RUNNER_TEMP"
-          # Opening the app from its CarPlay icon does not always work on these runners (3 tries in a row failed at
-          # times): up to 5 tries, each on a new simulator, until new screenshots are there.
-          for attempt in 1 2 3 4 5; do
-            APP="$RUNNER_TEMP/Carburants.app" ONLY=carplay scripts/screenshots.sh
-            if [ -n "$(git status --porcelain appstore/screenshots/carplay)" ]; then break; fi
-            echo "No CarPlay screenshots after try $attempt"
-          done
+          touch "$RUNNER_TEMP/start"
+          APP="$RUNNER_TEMP/Carburants.app" ONLY=carplay scripts/screenshots.sh
+          # Kept screenshots are the previous ones: only new ones count.
+          if find appstore/screenshots/carplay -name '*.png' -newer "$RUNNER_TEMP/start" | grep -q .; then
+            touch build/carplay-debug/taken
+          fi
 
-      # With what the CarPlay screen showed before each tap, to see what went wrong.
+      # The screenshots, with what the CarPlay screen showed before each tap, to see what went wrong.
       - if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: carplay
+          name: carplay-${{ matrix.shard }}
           path: |
             appstore/screenshots/carplay
             build/carplay-debug
@@ -153,10 +159,15 @@ jobs:
         run: |
           shots="$RUNNER_TEMP/shots"
           if [ -d "$shots/devices" ]; then cp -R "$shots/devices/." appstore/screenshots/; fi
-          if [ -d "$shots/carplay/appstore/screenshots/carplay" ]; then
-            rm -rf appstore/screenshots/carplay
-            cp -R "$shots/carplay/appstore/screenshots/carplay" appstore/screenshots/
-          fi
+          # The first CarPlay runner that took new screenshots (the others kept the previous ones).
+          for carplay in "$shots"/carplay-*; do
+            if [ -f "$carplay/build/carplay-debug/taken" ]; then
+              echo "CarPlay screenshots from $(basename "$carplay")"
+              rm -rf appstore/screenshots/carplay
+              cp -R "$carplay/appstore/screenshots/carplay" appstore/screenshots/
+              break
+            fi
+          done
           python3 -m pip install --break-system-packages pillow
           python3 scripts/screenshots_post.py appstore/screenshots screenshots
 
@@ -168,7 +179,9 @@ jobs:
           trial="$RUNNER_TEMP/trial"
           mkdir -p "$trial"
           cp -R appstore/screenshots screenshots "$trial"/
-          cp -R "$RUNNER_TEMP/shots/carplay/build/carplay-debug" "$trial"/ 2>/dev/null || true
+          for carplay in "$RUNNER_TEMP"/shots/carplay-*; do
+            cp -R "$carplay/build/carplay-debug" "$trial/$(basename "$carplay")-debug" 2>/dev/null || true
+          done
           cd "$trial"
           git init -q -b screenshots-trial
           git add -A
