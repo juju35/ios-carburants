@@ -77,6 +77,10 @@ struct DirectionsButton: View {
     }
 
     private func loadTravelTime() async {
+        if let demo = Directions.demoTravelTime(for: station) {
+            travelTime = demo
+            return
+        }
         let request = MKDirections.Request()
         request.source = .forCurrentLocation()
         request.destination = Directions.mapItem(for: station)
@@ -98,6 +102,13 @@ struct DirectionsButton: View {
 }
 
 enum Directions {
+    /// Demo mode (screenshots): no route from the current location, which would ask for it; a travel time from the
+    /// distance at 40 km/h instead.
+    static func demoTravelTime(for station: Station) -> TimeInterval? {
+        guard Demo.isOn else { return nil }
+        return max(60, (station.distanceKm ?? 1) / 40 * 3600)
+    }
+
     static func mapItem(for station: Station) -> MKMapItem {
         let coordinate = CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude)
         if #available(iOS 26.0, *) {

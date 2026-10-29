@@ -120,9 +120,9 @@ jobs:
       - name: Take screenshots
         run: |
           ditto -x -k "$RUNNER_TEMP/app.zip" "$RUNNER_TEMP"
-          # Opening the app from its CarPlay icon does not always work on these runners: up to 3 tries, each on a new
-          # simulator, until new screenshots are there.
-          for attempt in 1 2 3; do
+          # Opening the app from its CarPlay icon does not always work on these runners (3 tries in a row failed at
+          # times): up to 5 tries, each on a new simulator, until new screenshots are there.
+          for attempt in 1 2 3 4 5; do
             APP="$RUNNER_TEMP/Carburants.app" ONLY=carplay scripts/screenshots.sh
             if [ -n "$(git status --porcelain appstore/screenshots/carplay)" ]; then break; fi
             echo "No CarPlay screenshots after try $attempt"

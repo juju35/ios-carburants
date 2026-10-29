@@ -92,6 +92,8 @@ prepare() {
   xcrun simctl status_bar "$udid" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 \
     --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
   xcrun simctl install "$udid" "$app"
+  # No location prompt over the screenshots, whatever asks for the position.
+  xcrun simctl privacy "$udid" grant location "$BUNDLE"
   rm -rf "$dir"
   mkdir -p "$dir"
 }

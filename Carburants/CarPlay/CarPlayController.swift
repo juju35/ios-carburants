@@ -360,7 +360,7 @@ extension CarPlayController {
 
     /// "Y aller", with the travel time once known, as on the iPhone button.
     func goTitle(for station: Station) -> String {
-        guard let eta = travelTime(for: station) else { return "Y aller" }
+        guard let eta = Directions.demoTravelTime(for: station) ?? travelTime(for: station) else { return "Y aller" }
         return "Y aller · \(Format.duration(eta))"
     }
 
@@ -371,7 +371,7 @@ extension CarPlayController {
 
     /// Fetches the ETA once per station (then every 2 minutes), and calls `onUpdate` when it lands.
     func loadTravelTimeIfNeeded(for station: Station, onUpdate: @escaping @MainActor () -> Void) {
-        guard travelTime(for: station) == nil, !pendingETAs.contains(station.id) else { return }
+        guard !Demo.isOn, travelTime(for: station) == nil, !pendingETAs.contains(station.id) else { return }
         pendingETAs.insert(station.id)
         Task { [weak self] in
             let request = MKDirections.Request()
