@@ -149,8 +149,8 @@ def tap(udid: str, debug: Path) -> None:
         if attempt % 2 == 0:
             point = click_on(icon, screen)
         else:
-            print(f"Same point again, window not raised: {point}")
-            click(*point)
+            print(f"Same point again, window not raised, session event tap: {point}")
+            click(*point, session=True)
         for _ in range(6):
             time.sleep(2)
             screen = capture(udid, after)
@@ -158,7 +158,7 @@ def tap(udid: str, debug: Path) -> None:
                 return
         print(f"Click {attempt + 1}: the app's screen did not show")
     # The whole Mac screen, to see where the clicks went.
-    subprocess.run(["screencapture", "-x", str(debug.with_name("mac-screen.png"))], check=False)
+    subprocess.run(["screencapture", "-x", "-C", str(debug.with_name("mac-screen.png"))], check=False)
     raise SystemExit(f"The click at {point} did not open Carburants on the CarPlay screen, see {after}")
 
 
@@ -222,14 +222,18 @@ def to_window(point: tuple[float, float], screen: Image.Image, window: tuple[int
     return round(left + point[0] / scale), round(top + title_bar + point[1] / scale)
 
 
-def click(x: int, y: int) -> None:
+def click(x: int, y: int, session: bool = False) -> None:
     """A real mouse click at that point of the screen (System Events' "click at" does not reach the CarPlay screen),
-    posted by osascript, which has Accessibility."""
+    posted by osascript, which has Accessibility: to the HID event tap, or the session's one. The click state is set as
+    a real click's: some runs ignore every click on the CarPlay screen without it."""
+    tap = "$.kCGSessionEventTap" if session else "$.kCGHIDEventTap"
     osascript_js(
         'ObjC.import("CoreGraphics"); ObjC.import("Foundation");'
         f"const p = $.CGPointMake({x}, {y});"
         "for (const kind of [$.kCGEventMouseMoved, $.kCGEventLeftMouseDown, $.kCGEventLeftMouseUp]) {"
-        "  $.CGEventPost($.kCGHIDEventTap, $.CGEventCreateMouseEvent(null, kind, p, $.kCGMouseButtonLeft));"
+        "  const event = $.CGEventCreateMouseEvent(null, kind, p, $.kCGMouseButtonLeft);"
+        "  $.CGEventSetIntegerValueField(event, $.kCGMouseEventClickState, 1);"
+        f"  $.CGEventPost({tap}, event);"
         "  $.NSThread.sleepForTimeInterval(0.15);"
         "}"
     )
