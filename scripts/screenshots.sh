@@ -83,8 +83,9 @@ prepare() {
   local udid="$1" dir="$2"
   xcrun simctl boot "$udid"
   xcrun simctl bootstatus "$udid" -b >/dev/null
-  xcrun simctl spawn "$udid" defaults write -g AppleLanguages -array fr-FR
-  xcrun simctl spawn "$udid" defaults write -g AppleLocale fr_FR
+  # Right after the boot, the system may refuse it for a moment (simctl exits with 149).
+  retry xcrun simctl spawn "$udid" defaults write -g AppleLanguages -array fr-FR
+  retry xcrun simctl spawn "$udid" defaults write -g AppleLocale fr_FR
   # Booted again for the language to apply.
   xcrun simctl shutdown "$udid"
   xcrun simctl boot "$udid"
