@@ -123,11 +123,17 @@ def tap(udid: str, debug: Path) -> None:
     if icon is None:
         raise SystemExit(f"No Carburants icon on the CarPlay home screen, see {debug}")
     print(f"Icon at {icon[0]:.0f},{icon[1]:.0f}")
-    # The first click sometimes only brings the window forward: clicked again while the home screen stays.
+    # A click on a window that is not key only makes it key: raising the window again before each try (as
+    # click_on does) can eat every click. Every other try clicks the same point again without raising it.
     after = debug.with_name(debug.stem + "-after.png")
-    for attempt in range(3):
-        point = click_on(icon, screen)
-        for _ in range(8):
+    point = (0, 0)
+    for attempt in range(4):
+        if attempt % 2 == 0:
+            point = click_on(icon, screen)
+        else:
+            print(f"Same point again, window not raised: {point}")
+            click(*point)
+        for _ in range(6):
             time.sleep(2)
             screen = capture(udid, after)
             if grid_icon(screen) is None and drawn(screen):
