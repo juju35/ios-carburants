@@ -60,8 +60,9 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         mapTemplate.tabImage = UIImage(systemName: "map.fill")
         listTemplate.tabTitle = "Liste"
         listTemplate.tabImage = UIImage(systemName: "list.bullet")
-        // The tab bar shows titles only (iOS 26): a gear in text presentation keeps the tab short.
-        fuelTemplate.tabTitle = "\u{2699}\u{FE0E}"
+        // The tab bar shows titles only (iOS 26): a gear keeps the tab short. In emoji presentation, as the text one
+        // is drawn far smaller than the other tabs' titles.
+        fuelTemplate.tabTitle = "\u{2699}\u{FE0F}"
         fuelTemplate.tabImage = UIImage(systemName: "gearshape.fill")
 
         let tabs = CPTabBarTemplate(templates: [mapTemplate, listTemplate, fuelTemplate])
