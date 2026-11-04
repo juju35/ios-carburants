@@ -2,6 +2,8 @@
 
 # Carburants — iOS, CarPlay & widgets
 
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/julienstep9)
+
 Nearby fuel stations and their prices for **iPhone (iPhone Duo included), iPad, CarPlay and the Home and Lock
 Screens**, in SwiftUI with the system's own components, so it looks and behaves like a built-in app.
 The iOS counterpart of [aaos-carburants](https://github.com/juju35/aaos-carburants) (Android Automotive).
