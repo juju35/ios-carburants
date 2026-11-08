@@ -11,6 +11,8 @@
   appareils via iCloud
 
 ### Improvements
+- `scripts/screenshots-local.sh` : toutes les captures (iPhone, iPad, Duo, CarPlay) sur un Mac, outils préparés,
+  avec `--pr` pour ouvrir la PR
 - iOS / iPadOS 27.1 minimum (17 auparavant) : les chemins de compatibilité iOS 17 à 27.0 sont retirés
 - iPhone Duo plié : les deux moitiés sont disposées par l'`ArrangementView` du système (iOS 27.1) au lieu d'une
   géométrie calculée à la main ; la liste passe toujours en haut pendant une recherche en pose ordinateur
