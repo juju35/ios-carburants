@@ -14,6 +14,8 @@
 - CarPlay: « Y aller » ouvre directement l'application de navigation choisie dans les réglages (Plans si elle
   n'est pas installée), sans demander laquelle utiliser
 - CarPlay: le bouton « Y aller » affiche la durée de trajet, comme le bouton Itinéraire sur iPhone
+- CarPlay: les réglages s'ouvrent depuis une roue dentée à droite de la barre, le même symbole que sur iPhone,
+  au lieu d'un troisième onglet dont l'icône était un emoji
 
 ## 1.3.0
 
