@@ -31,9 +31,10 @@ newest_runtime() {
   xcrun simctl list runtimes -j | python3 -c '
 import json, re, sys
 sdk = tuple(int(n) for n in sys.argv[1].split("."))
-ids = [r["identifier"] for r in json.load(sys.stdin)["runtimes"] if r.get("isAvailable") and "SimRuntime.iOS-" in r["identifier"]]
-versions = {i: tuple(int(n) for n in re.search(r"iOS-([0-9-]+)", i).group(1).split("-")) for i in ids}
-ok = [i for i in ids if versions[i][:len(sdk)] <= sdk]
+ids = [r["identifier"] for r in json.load(sys.stdin)["runtimes"] if r.get("isAvailable")]
+# Major and minor only: identifiers can carry a suffix (iOS-27-2-24B8117, a beta build).
+versions = {i: tuple(int(n) for n in m.groups()) for i in ids if (m := re.search(r"SimRuntime\.iOS-(\d+)-(\d+)", i))}
+ok = [i for i in versions if versions[i] <= sdk[:2]]
 print(max(ok, key=versions.get) if ok else "")' "$(xcrun --sdk iphonesimulator --show-sdk-version)"
 }
 RUNTIME="${RUNTIME:-$(newest_runtime)}"
