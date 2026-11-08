@@ -5,7 +5,7 @@ name: Carburants
 options:
   bundleIdPrefix: me.jstephan
   deploymentTarget:
-    iOS: "27.0"
+    iOS: "27.1"
   createIntermediateGroups: true
   developmentLanguage: fr
 

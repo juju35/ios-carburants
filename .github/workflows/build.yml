@@ -37,8 +37,15 @@ jobs:
       - name: Pick a simulator
         id: sim
         run: |
+          # An iPhone on the newest iOS runtime no newer than the SDK: the deployment target (27.1) is above the
+          # image's default 27.0 runtime, and its 27.2 beta runtime does not boot.
+          sdk=$(xcrun --sdk iphonesimulator --show-sdk-version)
           id=$(xcrun simctl list devices available -j \
-            | jq -r '[.devices | to_entries[] | select(.key | test("iOS")) | .value[] | select(.name | startswith("iPhone"))][0].udid')
+            | jq -r --arg sdk "$sdk" '($sdk | split(".") | map(tonumber)) as $max
+              | [.devices | to_entries[] | select(.key | test("iOS"))
+                | {v: (.key | capture("iOS-(?<major>[0-9]+)-(?<minor>[0-9]+)") | [(.major | tonumber), (.minor | tonumber)]), devices: .value}
+                | select(.v <= $max)]
+              | sort_by(.v) | reverse | map(.devices[] | select(.name | startswith("iPhone")))[0].udid')
           test -n "$id" && test "$id" != null
           echo "id=$id" >> "$GITHUB_OUTPUT"
 

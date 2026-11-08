@@ -407,11 +407,7 @@ private struct ClearNavigationBackground: ViewModifier {
 struct DisableVerticalToolbarModifier: ViewModifier {
     func body(content: Content) -> some View {
         #if !targetEnvironment(macCatalyst)
-        if #available(iOS 27.1, *) {
-            content.toolbarVerticalBehavior(.disabled)
-        } else {
-            content
-        }
+        content.toolbarVerticalBehavior(.disabled)
         #else
         content
         #endif

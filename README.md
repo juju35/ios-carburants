@@ -89,7 +89,7 @@ appstore/                       # App Store Connect texts, screenshots, privacy 
 
 ## Build and run
 
-Requires iOS / iPadOS 27 (and runs on Apple silicon Macs as an iPad app). Built with **Xcode 27.1** (iOS 27.1 SDK,
+Requires iOS / iPadOS 27.1 (and runs on Apple silicon Macs as an iPad app). Built with **Xcode 27.1** (iOS 27.1 SDK,
 the one with iPhone Duo; Xcode 27 needs an Apple silicon Mac): Liquid Glass sheets, toolbars and side panel,
 scene-based lifecycle, live resizing, the portrait extra-large widget.
 
@@ -113,9 +113,9 @@ it runs on any device, without the CarPlay scene. Once Apple has granted it and 
 *I/O › External Displays › CarPlay*.
 
 **iPhone Duo / iPad**: the layout follows the horizontal size class — sheet when compact (closed, Split View),
-side panel when regular (open flat, full screen). **Partly folded** (around 90°), the app reads the fold from the
-iOS 27.1 reserved regions and keeps everything off it: map above and list below in the laptop / tabletop pose,
-list and map side by side in the book pose. In the Simulator, fold the iPhone Duo with Device Hub's buttons
+side panel when regular (open flat, full screen). **Partly folded** (around 90°), the app detects the fold from the
+reserved regions and hands the two halves to an `ArrangementView` (overlay style), which keeps everything off the
+fold: map above and list below in the laptop / tabletop pose, list and map side by side in the book pose. In the Simulator, fold the iPhone Duo with Device Hub's buttons
 (hold ⌥ for the angle slider).
 
 ## CI
