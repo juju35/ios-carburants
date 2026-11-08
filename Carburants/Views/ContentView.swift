@@ -26,13 +26,7 @@ struct ContentView: View {
 
             Group {
                 if let hinge {
-                    FoldedLayout(
-                        model: model,
-                        camera: $camera,
-                        fold: hinge,
-                        size: proxy.size,
-                        insets: proxy.safeAreaInsets
-                    )
+                    FoldedLayout(model: model, camera: $camera, fold: hinge)
                 } else if isRegular && !portrait {
                     landscapeUnfolded
                 } else {
@@ -153,63 +147,43 @@ struct ContentView: View {
     }
 }
 
-/// iPhone Duo partly folded, around 90°: the map and the list each take one side of the fold without borders:
-/// - book pose (fold down the screen): the list takes the full left screen edge-to-edge, the map shows in the trailing one;
+/// iPhone Duo partly folded, around 90°: the map and the list each take one side of the fold, laid out by the
+/// system's overlay arrangement (iOS 27.1), which follows the fold:
+/// - book pose (fold down the screen): the list takes the leading screen, the map the trailing one;
 /// - laptop pose (fold across the screen): the map stands up above the fold, the list lies below it. When searching,
 ///   the list moves to the top screen so the keyboard on the bottom screen does not hide what the user is typing.
 private struct FoldedLayout: View {
     @Bindable var model: StationsModel
     @Binding var camera: MapCameraPosition
     let fold: CGRect
-    let size: CGSize
-    let insets: EdgeInsets
 
     var body: some View {
         let stacked = fold.width >= fold.height
         let searchInLaptop = stacked && model.isSearching
 
-        let topPadding: CGFloat = stacked ? (searchInLaptop ? insets.top : 0) : insets.top
-        let bottomPadding: CGFloat = stacked ? (searchInLaptop ? 0 : insets.bottom) : insets.bottom
-
-        ZStack(alignment: .topLeading) {
-            // Stations framed in the half the list leaves free.
-            StationMap(model: model, camera: $camera)
-                .safeAreaPadding(
-                    stacked ? (searchInLaptop ? .top : .bottom) : .leading,
-                    stacked ? (searchInLaptop ? fold.maxY : size.height - fold.minY) : fold.maxX
-                )
-                .ignoresSafeArea()
-
+        ArrangementView {
             StationBrowser(model: model, inlineSearch: true)
-                .ignoresSafeArea(edges: .top)
-                .padding(.top, topPadding)
-                .padding(.bottom, bottomPadding)
                 .background(Color(.systemBackground))
-                .frame(
-                    width: stacked ? size.width : fold.minX,
-                    height: stacked ? (searchInLaptop ? fold.minY : max(0, size.height - fold.maxY)) : size.height
-                )
-                .offset(
-                    x: 0,
-                    y: stacked ? (searchInLaptop ? 0 : fold.maxY) : 0
-                )
-                .ignoresSafeArea(.keyboard)
+                .overlayArrangementEdge(HorizontalEdge.leading)
+                .overlayArrangementEdge(searchInLaptop ? VerticalEdge.top : .bottom)
+        } secondary: {
+            StationMap(model: model, camera: $camera)
+                .ignoresSafeArea()
         }
-        .animation(.smooth, value: fold)
+        .arrangementViewStyle(.overlay)
         .animation(.smooth, value: searchInLaptop)
     }
 }
 
-/// The fold of an iPhone Duo (iOS 27.1 reserved regions), only while it is partly folded: the division region is
-/// inactive, and not returned, when the device is closed or open flat.
+/// The fold of an iPhone Duo (reserved regions), only while it is partly folded: the division region is inactive,
+/// and not returned, when the device is closed or open flat.
 private enum Fold {
     static func band(in proxy: GeometryProxy) -> CGRect? {
         #if !targetEnvironment(macCatalyst)
-        if #available(iOS 27.1, *) {
-            return proxy.reservedRegions(kind: .division).first?.frame
-        }
-        #endif
+        return proxy.reservedRegions(kind: .division).first?.frame
+        #else
         return nil
+        #endif
     }
 }
 

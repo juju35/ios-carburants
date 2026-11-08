@@ -11,7 +11,9 @@
   appareils via iCloud
 
 ### Improvements
-- iOS / iPadOS 27 minimum (17 auparavant) : les chemins de compatibilité iOS 17 à 26 sont retirés
+- iOS / iPadOS 27.1 minimum (17 auparavant) : les chemins de compatibilité iOS 17 à 27.0 sont retirés
+- iPhone Duo plié : les deux moitiés sont disposées par l'`ArrangementView` du système (iOS 27.1) au lieu d'une
+  géométrie calculée à la main ; la liste passe toujours en haut pendant une recherche en pose ordinateur
 - La barre de la liste s'efface au défilement vers le bas et revient en remontant (iOS 27) ; le bouton Préférences
   reste épinglé à droite quelle que soit la largeur (écran extérieur du Duo, fenêtre redimensionnée)
 - iPad / Mac : le bouton « Stations » qui rouvre le panneau est en verre interactif

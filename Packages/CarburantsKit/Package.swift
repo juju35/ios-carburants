@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "CarburantsKit",
     defaultLocalization: "fr",
-    platforms: [.iOS("27.0")],
+    platforms: [.iOS("27.1")],
     products: [
         .library(name: "CarburantsKit", targets: ["CarburantsKit"]),
     ],
