@@ -90,14 +90,8 @@ public struct StationLogo: View {
 
     /// In a widget shown tinted or clear (Home Screen, CarPlay), the logo follows the tint instead of
     /// staying in colour.
-    @ViewBuilder
     private func logo(_ uiImage: UIImage) -> some View {
-        let image = Image(uiImage: uiImage).resizable().interpolation(.high)
-        if #available(iOS 18, *) {
-            image.widgetAccentedRenderingMode(.accentedDesaturated)
-        } else {
-            image
-        }
+        Image(uiImage: uiImage).resizable().interpolation(.high).widgetAccentedRenderingMode(.accentedDesaturated)
     }
 
     // Grey gradient, as Contacts draws a contact without a photo.

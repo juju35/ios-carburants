@@ -79,12 +79,6 @@ final class TownSearchCompleter: NSObject, MKLocalSearchCompleterDelegate {
             return nil
         }
         let name = item.name ?? query
-        let coordinate: CLLocationCoordinate2D
-        if #available(iOS 26.0, *) {
-            coordinate = item.location.coordinate
-        } else {
-            coordinate = item.placemark.coordinate
-        }
-        return (name: name, coordinate: coordinate)
+        return (name: name, coordinate: item.location.coordinate)
     }
 }

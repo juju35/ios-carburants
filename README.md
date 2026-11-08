@@ -89,9 +89,9 @@ appstore/                       # App Store Connect texts, screenshots, privacy 
 
 ## Build and run
 
-Runs on iOS / iPadOS 17 to 27. Built with **Xcode 27.1** (iOS 27.1 SDK, the one with iPhone Duo; Xcode 27 needs
-an Apple silicon Mac), so the app gets the iOS 27 behaviour: Liquid Glass sheets, toolbars and side panel (glass from
-iOS 26, materials before), scene-based lifecycle, live resizing.
+Requires iOS / iPadOS 27 (and runs on Apple silicon Macs as an iPad app). Built with **Xcode 27.1** (iOS 27.1 SDK,
+the one with iPhone Duo; Xcode 27 needs an Apple silicon Mac): Liquid Glass sheets, toolbars and side panel,
+scene-based lifecycle, live resizing, the portrait extra-large widget.
 
 ```sh
 brew install xcodegen
