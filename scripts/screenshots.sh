@@ -168,7 +168,7 @@ print(ok[-1] if ok else "")')
 }
 
 # CarPlay: the Simulator's CarPlay screen (I/O › External Displays › CarPlay). Xcode 27's Device Hub has no CarPlay
-# for simulators, so this uses the Simulator app of Xcode 26 (CARPLAY_SIMULATOR to choose another) on an iOS 26
+# for simulators, so this uses the Simulator app of Xcode 26 (CARPLAY_SIMULATOR to choose another) on the newest iOS
 # simulator; the Screenshots workflow runs it on a macOS 26 runner, with the app built by Xcode 27. The app's CarPlay
 # scene only starts from its icon on the CarPlay screen, clicked by scripts/carplay.py (needs Accessibility for
 # osascript). Skipped, the previous screenshots kept, when something fails.
@@ -180,10 +180,12 @@ shoot_carplay() {
     /Applications/Xcode_26*.app/Contents/Developer/Applications/Simulator.app 2>/dev/null | head -1 || true)}"
   runtime=$(xcrun simctl list runtimes -j | python3 -c '
 import json, sys
-ids = [r["identifier"] for r in json.load(sys.stdin)["runtimes"] if r.get("isAvailable") and "SimRuntime.iOS-26-" in r["identifier"]]
-print(sorted(ids)[-1] if ids else "")')
+import re
+runtimes = [r["identifier"] for r in json.load(sys.stdin)["runtimes"] if r.get("isAvailable") and "SimRuntime.iOS-" in r["identifier"]]
+# The newest runtime: the app needs the iOS of its deployment target, booted by Xcode 26 Simulator app.
+print(max(runtimes, key=lambda i: [int(n) for n in re.search(r"iOS-([0-9-]+)", i).group(1).split("-")]) if runtimes else "")')
   if [ -z "$simulator" ] || [ ! -d "$simulator" ] || [ -z "$runtime" ]; then
-    echo "::warning title=CarPlay screenshots::no Xcode 26 Simulator app ($simulator) or iOS 26 runtime ($runtime), previous ones kept. Installed: $(ls -d /Applications/Xcode*.app 2>/dev/null | tr '\n' ' '), $(xcrun simctl list runtimes | grep -c iOS) iOS runtimes"
+    echo "::warning title=CarPlay screenshots::no Xcode 26 Simulator app ($simulator) or iOS runtime ($runtime), previous ones kept. Installed: $(ls -d /Applications/Xcode*.app 2>/dev/null | tr '\n' ' '), $(xcrun simctl list runtimes | grep -c iOS) iOS runtimes"
     return 0
   fi
   echo "CarPlay: $simulator, $runtime"
