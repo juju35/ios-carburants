@@ -84,6 +84,7 @@ Carburants/
 CarburantsWidget/               # WidgetKit extension (App Intent configuration)
 scripts/app_icon.py             # draws the app icon (default, dark, tinted) and docs/icon.png
 scripts/screenshots.sh          # App Store and README screenshots (demo mode, simulators)
+scripts/screenshots-local.sh    # same on a Mac: prepares runtime, duoctl, Xcode 26 for CarPlay; --pr opens a PR
 appstore/                       # App Store Connect texts, screenshots, privacy and review answers
 ```
 
