@@ -110,16 +110,9 @@ enum Directions {
     }
 
     static func mapItem(for station: Station) -> MKMapItem {
-        let coordinate = CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude)
-        if #available(iOS 26.0, *) {
-            let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-            let item = MKMapItem(location: location, address: nil)
-            item.name = station.name
-            return item
-        } else {
-            let item = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
-            item.name = station.name
-            return item
-        }
+        let location = CLLocation(latitude: station.latitude, longitude: station.longitude)
+        let item = MKMapItem(location: location, address: nil)
+        item.name = station.name
+        return item
     }
 }

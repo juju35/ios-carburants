@@ -213,21 +213,13 @@ private enum Fold {
     }
 }
 
-/// Liquid Glass from iOS 26, a material before.
+/// Liquid Glass panel.
 private struct PanelBackground: ViewModifier {
-    @ViewBuilder
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
-        if #available(iOS 26, *) {
-            content
-                .glassEffect(.regular, in: shape)
-                .clipShape(shape)
-                .shadow(color: .black.opacity(0.12), radius: 20, y: 8)
-        } else {
-            content
-                .background(.regularMaterial, in: shape)
-                .clipShape(shape)
-                .shadow(color: .black.opacity(0.12), radius: 20, y: 8)
-        }
+        content
+            .glassEffect(.regular, in: shape)
+            .clipShape(shape)
+            .shadow(color: .black.opacity(0.12), radius: 20, y: 8)
     }
 }

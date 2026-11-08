@@ -13,14 +13,10 @@ struct CarburantsWidgetBundle: WidgetBundle {
 /// 5 on the large with multi-fuels (6 with single fuel), 8 on extra large, and Lock Screen accessories.
 struct NearbyStationsWidget: Widget {
     private var supportedFamilies: [WidgetFamily] {
-        var families: [WidgetFamily] = [
-            .systemSmall, .systemMedium, .systemLarge, .systemExtraLarge,
+        [
+            .systemSmall, .systemMedium, .systemLarge, .systemExtraLarge, .systemExtraLargePortrait,
             .accessoryRectangular, .accessoryInline, .accessoryCircular,
         ]
-        if #available(iOS 27.0, *) {
-            families.append(.systemExtraLargePortrait)
-        }
-        return families
     }
 
     var body: some WidgetConfiguration {
