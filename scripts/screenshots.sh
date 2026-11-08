@@ -25,6 +25,19 @@ on_error() {
 }
 trap 'on_error $LINENO "$BASH_COMMAND"' ERR
 
+# The newest available iOS runtime no newer than the selected Xcode's SDK: the image's default runtime can be a
+# newer beta that does not boot (iOS 27.2 on macos-26, "Malformed bundle"), and the app needs the SDK's iOS.
+newest_runtime() {
+  xcrun simctl list runtimes -j | python3 -c '
+import json, re, sys
+sdk = tuple(int(n) for n in sys.argv[1].split("."))
+ids = [r["identifier"] for r in json.load(sys.stdin)["runtimes"] if r.get("isAvailable") and "SimRuntime.iOS-" in r["identifier"]]
+versions = {i: tuple(int(n) for n in re.search(r"iOS-([0-9-]+)", i).group(1).split("-")) for i in ids}
+ok = [i for i in ids if versions[i][:len(sdk)] <= sdk]
+print(max(ok, key=versions.get) if ok else "")' "$(xcrun --sdk iphonesimulator --show-sdk-version)"
+}
+RUNTIME="${RUNTIME:-$(newest_runtime)}"
+
 IPHONE="${IPHONE:-iPhone 18 Pro Max}"
 IPAD="${IPAD:-iPad Pro 13-inch (M5)}"
 DELAY="${DELAY:-10}"
@@ -58,7 +71,7 @@ shoot() {
   local type="$1" dir="$OUT/$2"
   shift 2
   local udid
-  udid=$(xcrun simctl create "Carburants screenshots" "$type")
+  udid=$(xcrun simctl create "Carburants screenshots" "$type" "$RUNTIME")
   trap 'xcrun simctl delete "$udid" >/dev/null 2>&1 || true' RETURN
   # System in French (status bar date on iPad, system sheets), then boot again for it to apply.
   prepare "$udid" "$dir"
@@ -130,17 +143,12 @@ retry() {
 # iPhone Duo: closed (cover screen), open flat (inner screen, side panel), half folded (list and map on either side
 # of the fold). duoctl screenshots the screen in use.
 shoot_duo() {
-  local dir="$OUT/iphone-duo.new" runtime udid
-  runtime=$(xcrun simctl list runtimes -j | python3 -c '
-import json, sys
-ids = [r["identifier"] for r in json.load(sys.stdin)["runtimes"] if r.get("isAvailable") and r["identifier"].startswith("com.apple.CoreSimulator.SimRuntime.iOS-")]
-ok = [i for i in ids if tuple(map(int, i.rsplit("iOS-", 1)[1].split("-")[:2])) >= (27, 1)]
-print(ok[-1] if ok else "")')
-  if [ -z "$runtime" ] || ! command -v duoctl >/dev/null; then
-    echo "No iOS 27.1 runtime or no duoctl: no iPhone Duo screenshots"
+  local dir="$OUT/iphone-duo.new" udid
+  if [ -z "$RUNTIME" ] || ! command -v duoctl >/dev/null; then
+    echo "No iOS runtime or no duoctl: no iPhone Duo screenshots"
     return 0
   fi
-  udid=$(xcrun simctl create "Carburants screenshots Duo" "iPhone Duo" "$runtime")
+  udid=$(xcrun simctl create "Carburants screenshots Duo" "iPhone Duo" "$RUNTIME")
   trap 'xcrun simctl delete "$udid" >/dev/null 2>&1 || true' RETURN
   prepare "$udid" "$dir"
   export DUOCTL_UDID="$udid"
@@ -174,24 +182,18 @@ print(ok[-1] if ok else "")')
 # osascript). Skipped, the previous screenshots kept, when something fails.
 CARPLAY_IPHONE="${CARPLAY_IPHONE:-iPhone 17 Pro Max}"
 shoot_carplay() {
-  local dir="$OUT/carplay" tmp udid n=1 screen simulator runtime opened
+  local dir="$OUT/carplay" tmp udid n=1 screen simulator opened
   # The selected Xcode's when it still has one (Xcode 26), else the latest installed Xcode 26's.
   simulator="${CARPLAY_SIMULATOR:-$(ls -d "$(xcode-select -p)/Applications/Simulator.app" \
     /Applications/Xcode_26*.app/Contents/Developer/Applications/Simulator.app 2>/dev/null | head -1 || true)}"
-  runtime=$(xcrun simctl list runtimes -j | python3 -c '
-import json, sys
-import re
-runtimes = [r["identifier"] for r in json.load(sys.stdin)["runtimes"] if r.get("isAvailable") and "SimRuntime.iOS-" in r["identifier"]]
-# The newest runtime: the app needs the iOS of its deployment target, booted by Xcode 26 Simulator app.
-print(max(runtimes, key=lambda i: [int(n) for n in re.search(r"iOS-([0-9-]+)", i).group(1).split("-")]) if runtimes else "")')
-  if [ -z "$simulator" ] || [ ! -d "$simulator" ] || [ -z "$runtime" ]; then
-    echo "::warning title=CarPlay screenshots::no Xcode 26 Simulator app ($simulator) or iOS runtime ($runtime), previous ones kept. Installed: $(ls -d /Applications/Xcode*.app 2>/dev/null | tr '\n' ' '), $(xcrun simctl list runtimes | grep -c iOS) iOS runtimes"
+  if [ -z "$simulator" ] || [ ! -d "$simulator" ] || [ -z "$RUNTIME" ]; then
+    echo "::warning title=CarPlay screenshots::no Xcode 26 Simulator app ($simulator) or iOS runtime ($RUNTIME), previous ones kept. Installed: $(ls -d /Applications/Xcode*.app 2>/dev/null | tr '\n' ' '), $(xcrun simctl list runtimes | grep -c iOS) iOS runtimes"
     return 0
   fi
-  echo "CarPlay: $simulator, $runtime"
+  echo "CarPlay: $simulator, $RUNTIME"
   tmp=$(mktemp -d)
   mkdir -p build/carplay-debug
-  udid=$(xcrun simctl create "Carburants screenshots CarPlay" "$CARPLAY_IPHONE" "$runtime")
+  udid=$(xcrun simctl create "Carburants screenshots CarPlay" "$CARPLAY_IPHONE" "$RUNTIME")
   trap 'osascript -e "quit app \"Simulator\"" >/dev/null 2>&1 || true; xcrun simctl delete "$udid" >/dev/null 2>&1 || true' RETURN
   prepare "$udid" "$tmp"
   xcrun simctl ui "$udid" appearance light
