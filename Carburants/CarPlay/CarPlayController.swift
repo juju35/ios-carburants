@@ -326,23 +326,24 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
 // MARK: - Directions
 
 extension CarPlayController {
-    /// Opens the navigation app chosen in the settings, without asking; Plans when it is not installed.
+    /// Opens the navigation app chosen in the settings, without asking; Plans when it is not installed (iOS 27
+    /// deprecates asking beforehand with canOpenURL: the app is tried, and the failure handled).
     func navigate(to station: Station) {
         let preferred = model.navigationApp
-        let app = availableNavigationApps().contains(preferred) ? preferred : .appleMaps
-        scene?.open(app.url(for: station), options: nil, completionHandler: nil)
+        guard preferred != .appleMaps else {
+            scene?.open(NavigationApp.appleMaps.url(for: station), options: nil, completionHandler: nil)
+            return
+        }
+        scene?.open(preferred.url(for: station), options: nil) { [weak self] opened in
+            guard !opened else { return }
+            Task { @MainActor in
+                self?.scene?.open(NavigationApp.appleMaps.url(for: station), options: nil, completionHandler: nil)
+            }
+        }
     }
 
-    func availableNavigationApps() -> [NavigationApp] {
-        var apps: [NavigationApp] = [.appleMaps]
-        if let gmaps = URL(string: "comgooglemaps://"), UIApplication.shared.canOpenURL(gmaps) {
-            apps.append(.googleMaps)
-        }
-        if let waze = URL(string: "waze://"), UIApplication.shared.canOpenURL(waze) {
-            apps.append(.waze)
-        }
-        return apps
-    }
+    /// Every app is offered: which ones are installed is only known when opening one.
+    func availableNavigationApps() -> [NavigationApp] { NavigationApp.allCases }
 
     /// "Y aller", with the travel time once known, as on the iPhone button.
     func goTitle(for station: Station) -> String {

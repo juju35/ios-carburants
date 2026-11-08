@@ -12,6 +12,9 @@
 
 ### Improvements
 - iOS / iPadOS 27 minimum (17 auparavant) : les chemins de compatibilité iOS 17 à 26 sont retirés
+- La barre de la liste s'efface au défilement vers le bas et revient en remontant (iOS 27) ; le bouton Préférences
+  reste épinglé à droite quelle que soit la largeur (écran extérieur du Duo, fenêtre redimensionnée)
+- iPad / Mac : le bouton « Stations » qui rouvre le panneau est en verre interactif
 - CarPlay: « Y aller » ouvre directement l'application de navigation choisie dans les réglages (Plans si elle
   n'est pas installée), sans demander laquelle utiliser
 - CarPlay: le bouton « Y aller » affiche la durée de trajet, comme le bouton Itinéraire sur iPhone

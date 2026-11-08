@@ -18,18 +18,7 @@ struct StationBrowser: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            content
-                .modifier(ClearNavigationBackground())
-                .navigationTitle(inlineSearch ? "" : navigationTitle)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar { toolbar }
-                .modifier(DisableVerticalToolbarModifier())
-                .modifier(SearchableDrawerModifier(
-                    enabled: !inlineSearch,
-                    text: $model.filterText,
-                    isSearching: $model.isSearching,
-                    onSubmit: submitSearchQuery
-                ))
+            root
                 .navigationDestination(for: Station.ID.self) { id in
                     if let station = model.station(id) {
                         StationDetailView(station: station, fuels: model.fuels)
@@ -80,6 +69,23 @@ struct StationBrowser: View {
                 isSearchFieldFocused = false
             }
         }
+    }
+
+    /// The list with its bar; the bar gives way to the stations as the list scrolls down, and comes back on the way up.
+    private var root: some View {
+        content
+            .modifier(ClearNavigationBackground())
+            .navigationTitle(inlineSearch ? "" : navigationTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { toolbar }
+            .toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
+            .modifier(DisableVerticalToolbarModifier())
+            .modifier(SearchableDrawerModifier(
+                enabled: !inlineSearch,
+                text: $model.filterText,
+                isSearching: $model.isSearching,
+                onSubmit: submitSearchQuery
+            ))
     }
 
     private var navigationTitle: String {
@@ -257,45 +263,47 @@ struct StationBrowser: View {
         }
 
         ToolbarItem(placement: .topBarTrailing) {
-            HStack(spacing: 12) {
-                if inlineSearch && (isSearchFieldFocused || model.isSearching || !model.filterText.isEmpty) {
-                    Button("Annuler") {
-                        withAnimation(.smooth) {
-                            model.filterText = ""
-                            isSearchFieldFocused = false
-                            model.isSearching = false
-                        }
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            if inlineSearch && (isSearchFieldFocused || model.isSearching || !model.filterText.isEmpty) {
+                Button("Annuler") {
+                    withAnimation(.smooth) {
+                        model.filterText = ""
+                        isSearchFieldFocused = false
+                        model.isSearching = false
                     }
-                } else {
-                    Menu {
-                        Picker("Trier par", selection: Binding(get: { model.sort }, set: { model.setSort($0) })) {
-                            Label("Prix", systemImage: "eurosign").tag(StationOrder.price)
-                            Label("Distance", systemImage: "location").tag(StationOrder.distance)
-                        }
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+            } else {
+                Menu {
+                    Picker("Trier par", selection: Binding(get: { model.sort }, set: { model.setSort($0) })) {
+                        Label("Prix", systemImage: "eurosign").tag(StationOrder.price)
+                        Label("Distance", systemImage: "location").tag(StationOrder.distance)
+                    }
 
-                        Section("Application d’itinéraire") {
-                            Picker("Navigation", selection: Binding(
-                                get: { model.navigationApp },
-                                set: { model.setNavigationApp($0) }
-                            )) {
-                                ForEach(NavigationApp.allCases) { app in
-                                    Label(app.title, systemImage: app.symbol).tag(app)
-                                }
+                    Section("Application d’itinéraire") {
+                        Picker("Navigation", selection: Binding(
+                            get: { model.navigationApp },
+                            set: { model.setNavigationApp($0) }
+                        )) {
+                            ForEach(NavigationApp.allCases) { app in
+                                Label(app.title, systemImage: app.symbol).tag(app)
                             }
                         }
-                    } label: {
-                        Label("Trier", systemImage: "arrow.up.arrow.down")
                     }
-
-                    Button {
-                        model.showsFuelPicker = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityLabel("Préférences")
+                } label: {
+                    Label("Trier", systemImage: "arrow.up.arrow.down")
                 }
             }
+        }
+
+        // Pinned: stays at the trailing edge whatever the width (iPhone Duo cover screen, resized window), and when
+        // the sort menu goes to the overflow menu.
+        ToolbarItem(placement: .topBarPinnedTrailing) {
+            Button {
+                model.showsFuelPicker = true
+            } label: {
+                Image(systemName: "gearshape")
+            }
+            .accessibilityLabel("Préférences")
         }
 
         ToolbarItemGroup(placement: .keyboard) {

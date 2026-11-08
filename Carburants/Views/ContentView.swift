@@ -119,7 +119,7 @@ struct ContentView: View {
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
                 }
-                .modifier(PanelBackground())
+                .modifier(PanelBackground(interactive: true))
                 .padding(12)
                 .transition(.move(edge: .leading).combined(with: .opacity))
             }
@@ -213,12 +213,14 @@ private enum Fold {
     }
 }
 
-/// Liquid Glass panel.
+/// Liquid Glass panel; interactive for a button, so the glass answers the touch.
 private struct PanelBackground: ViewModifier {
+    var interactive = false
+
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
         content
-            .glassEffect(.regular, in: shape)
+            .glassEffect(interactive ? .regular.interactive() : .regular, in: shape)
             .clipShape(shape)
             .shadow(color: .black.opacity(0.12), radius: 20, y: 8)
     }
