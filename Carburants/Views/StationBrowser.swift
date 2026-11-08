@@ -18,20 +18,7 @@ struct StationBrowser: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            content
-                .modifier(ClearNavigationBackground())
-                .navigationTitle(inlineSearch ? "" : navigationTitle)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar { toolbar }
-                // The bar gives way to the stations as the list scrolls down, and comes back on the way up.
-                .toolbarMinimizeBehavior(.onScrollDown, for: .navigationBar)
-                .modifier(DisableVerticalToolbarModifier())
-                .modifier(SearchableDrawerModifier(
-                    enabled: !inlineSearch,
-                    text: $model.filterText,
-                    isSearching: $model.isSearching,
-                    onSubmit: submitSearchQuery
-                ))
+            root
                 .navigationDestination(for: Station.ID.self) { id in
                     if let station = model.station(id) {
                         StationDetailView(station: station, fuels: model.fuels)
@@ -82,6 +69,23 @@ struct StationBrowser: View {
                 isSearchFieldFocused = false
             }
         }
+    }
+
+    /// The list with its bar; the bar gives way to the stations as the list scrolls down, and comes back on the way up.
+    private var root: some View {
+        content
+            .modifier(ClearNavigationBackground())
+            .navigationTitle(inlineSearch ? "" : navigationTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { toolbar }
+            .toolbarMinimizeBehavior(.onScrollDown, for: .navigationBar)
+            .modifier(DisableVerticalToolbarModifier())
+            .modifier(SearchableDrawerModifier(
+                enabled: !inlineSearch,
+                text: $model.filterText,
+                isSearching: $model.isSearching,
+                onSubmit: submitSearchQuery
+            ))
     }
 
     private var navigationTitle: String {
