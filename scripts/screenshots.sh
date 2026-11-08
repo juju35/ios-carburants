@@ -4,7 +4,7 @@
 # (sample stations around Rennes) on fresh simulators.
 #
 #   scripts/screenshots.sh
-#   IPHONE="iPhone 17 Pro Max" IPAD="iPad Pro 13-inch (M4)" scripts/screenshots.sh   # other device types
+#   IPHONE="iPhone 18 Pro Max" IPAD="iPad Pro 13-inch (M4)" scripts/screenshots.sh   # other device types
 #
 # Needs Xcode, XcodeGen and Python 3 with Pillow and NumPy (pip install pillow numpy). The iPhone Duo ones also need the iOS 27.1
 # simulator runtime (xcodebuild -downloadPlatform iOS) and duoctl, which folds the simulator
@@ -50,7 +50,9 @@ pick = within or ok
 print(max(pick, key=candidates.get) if pick else "")' "$1" "$MIN_IOS" "$(xcrun --sdk iphonesimulator --show-sdk-version)"
 }
 
-IPHONE="${IPHONE:-iPhone 18 Pro Max}"
+# iPhone 17 Pro Max (6.9", the App Store size): the iPhone 18 Pro Max only runs on iOS 27.0, below the deployment
+# target, and on the 27.2 beta runtime, whose simulators refuse simctl spawn (SimLaunchHostService error 3).
+IPHONE="${IPHONE:-iPhone 17 Pro Max}"
 IPAD="${IPAD:-iPad Pro 13-inch (M5)}"
 DELAY="${DELAY:-10}"
 BUNDLE=me.jstephan.carburants
