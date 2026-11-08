@@ -329,16 +329,11 @@ extension CarPlayController {
     /// Opens the navigation app chosen in the settings, without asking; Plans when it is not installed (iOS 27
     /// deprecates asking beforehand with canOpenURL: the app is tried, and the failure handled).
     func navigate(to station: Station) {
+        guard let scene else { return }
         let preferred = model.navigationApp
-        guard preferred != .appleMaps else {
-            scene?.open(NavigationApp.appleMaps.url(for: station), options: nil, completionHandler: nil)
-            return
-        }
-        scene?.open(preferred.url(for: station), options: nil) { [weak self] opened in
-            guard !opened else { return }
-            Task { @MainActor in
-                self?.scene?.open(NavigationApp.appleMaps.url(for: station), options: nil, completionHandler: nil)
-            }
+        Task {
+            if preferred != .appleMaps, await scene.open(preferred.url(for: station), options: nil) { return }
+            _ = await scene.open(NavigationApp.appleMaps.url(for: station), options: nil)
         }
     }
 
