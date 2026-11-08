@@ -15,8 +15,6 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
     private let mapTemplate = CPPointOfInterestTemplate(title: "À proximité", pointsOfInterest: [], selectedIndex: NSNotFound)
     private let listTemplate = CPListTemplate(title: "Stations", sections: [])
     private let fuelTemplate = CPListTemplate(title: "Réglages", sections: [])
-    /// The tab the settings were last pushed on.
-    private weak var settingsTab: CPTemplate?
 
     // The point-of-interest template shows at most 12 places.
     private static let maxPoints = 12
@@ -33,7 +31,6 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
     private var pointsContent: Content?
     private var listContent: Content?
     private var listStatus: [String]?
-    private var listSort: StationOrder?
     private var pickerFuels: [Fuel]?
     private var pickerNavigationApp: NavigationApp?
     private var pickerRadiusKm: Int?
@@ -62,11 +59,12 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         mapTemplate.tabImage = UIImage(systemName: "map.fill")
         listTemplate.tabTitle = "Liste"
         listTemplate.tabImage = UIImage(systemName: "list.bullet")
-        // The settings are not a tab: the tab bar draws titles only (iOS 26), where a gear is either a text or an
-        // emoji. A bar button shows the same SF Symbol as the iPhone's gear, at the right of both tabs.
-        mapTemplate.trailingNavigationBarButtons = [settingsButton()]
+        // A text title, as the tab bar draws titles only (iOS 26): a gear there is an emoji. The tab is the only way
+        // to the settings, since the root templates of a tab bar show no navigation bar buttons.
+        fuelTemplate.tabTitle = "Réglages"
+        fuelTemplate.tabImage = UIImage(systemName: "gearshape.fill")
 
-        let tabs = CPTabBarTemplate(templates: [mapTemplate, listTemplate])
+        let tabs = CPTabBarTemplate(templates: [mapTemplate, listTemplate, fuelTemplate])
         interface.setRootTemplate(tabs, animated: false, completion: nil)
         model.start()
         model.resume()
@@ -104,7 +102,6 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         let fuels = model.fuels
         let cheapest = model.cheapestPrice
         let revision = LogoStore.shared.revision
-        let sort = model.sort
         let status = [emptyTitle, emptySubtitle]
         let currentScale = currentDisplayScale()
         if currentScale != lastDisplayScale {
@@ -136,14 +133,6 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
             listStatus = status
             listTemplate.emptyViewTitleVariants = [status[0]]
             listTemplate.emptyViewSubtitleVariants = [status[1]]
-        }
-        if sort != listSort {
-            listSort = sort
-            let button = CPBarButton(title: sort == .price ? "Prix" : "Distance") { [weak self] _ in
-                guard let self else { return }
-                model.setSort(model.sort == .price ? .distance : .price)
-            }
-            listTemplate.trailingNavigationBarButtons = [settingsButton(), button]
         }
 
         let currentNavApp = model.navigationApp
@@ -416,39 +405,5 @@ extension CarPlayController {
         guard let image = renderer.uiImage?.withRenderingMode(.alwaysOriginal) else { return nil }
         images[key] = image
         return image
-    }
-}
-
-// MARK: - Settings
-
-extension CarPlayController {
-    /// The gear that opens the settings (fuels, radius, navigation app), the iPhone's symbol; one per template, as
-    /// a bar button belongs to a single navigation bar.
-    func settingsButton() -> CPBarButton {
-        let button = CPBarButton(image: UIImage(systemName: "gearshape") ?? UIImage()) { [weak self] _ in
-            self?.showSettings()
-        }
-        button.accessibilityLabel = "Réglages"
-        return button
-    }
-
-    /// Pushes the settings on the current tab. A template can be in one navigation stack only: when they are still
-    /// open on the other tab, that tab is shown instead.
-    func showSettings() {
-        guard let tabs = interface.rootTemplate as? CPTabBarTemplate, let current = tabs.selectedTemplate else { return }
-        if let other = settingsTab, other !== current {
-            tabs.select(other)
-            if interface.templates.contains(where: { $0 === fuelTemplate }) {
-                interface.pop(to: fuelTemplate, animated: true, completion: nil)
-                return
-            }
-            tabs.select(current)
-        }
-        if interface.templates.contains(where: { $0 === fuelTemplate }) {
-            interface.pop(to: fuelTemplate, animated: true, completion: nil)
-            return
-        }
-        settingsTab = current
-        interface.pushTemplate(fuelTemplate, animated: true, completion: nil)
     }
 }

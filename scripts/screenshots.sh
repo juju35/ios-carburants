@@ -204,8 +204,7 @@ print(sorted(ids)[-1] if ids else "")')
   fi
   sleep $((DELAY * 2))
   # The app is opened once from its icon (a relaunch does not reconnect its CarPlay scene), then each screen is
-  # reached as a driver would: the Liste tab, its first row, back, the gear at the right of the navigation bar (points
-  # of the 800 x 480 screen).
+  # reached as a driver would: the Liste tab, its first row, back, the Réglages tab (points of the 800 x 480 screen).
   launch "$udid" list
   sleep 3
   if ! opened=$(trap - ERR; python3 scripts/carplay.py tap "$udid" build/carplay-debug/home.png 2>&1); then
@@ -213,7 +212,7 @@ print(sorted(ids)[-1] if ids else "")')
     return 0
   fi
   echo "$opened"
-  local step steps=("map" "list:414:44" "detail:560:126" "-:140:44" "fuels:755:44") point
+  local step steps=("map" "list:414:44" "detail:560:126" "-:140:44" "fuels:550:44") point
   for step in "${steps[@]}"; do
     screen="${step%%:*}"
     if [ "$step" != "$screen" ]; then
