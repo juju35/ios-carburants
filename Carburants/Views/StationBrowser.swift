@@ -78,7 +78,7 @@ struct StationBrowser: View {
             .navigationTitle(inlineSearch ? "" : navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
-            .toolbarMinimizeBehavior(.onScrollDown, for: .navigationBar)
+            .toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
             .modifier(DisableVerticalToolbarModifier())
             .modifier(SearchableDrawerModifier(
                 enabled: !inlineSearch,
