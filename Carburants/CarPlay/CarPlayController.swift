@@ -73,36 +73,6 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         observe()
     }
 
-    /// The gear that opens the settings (fuels, radius, navigation app), the iPhone's symbol; one per template, as
-    /// a bar button belongs to a single navigation bar.
-    private func settingsButton() -> CPBarButton {
-        let button = CPBarButton(image: UIImage(systemName: "gearshape") ?? UIImage()) { [weak self] _ in
-            self?.showSettings()
-        }
-        button.accessibilityLabel = "Réglages"
-        return button
-    }
-
-    /// Pushes the settings on the current tab. A template can be in one navigation stack only: when they are still
-    /// open on the other tab, that tab is shown instead.
-    private func showSettings() {
-        guard let tabs = interface.rootTemplate as? CPTabBarTemplate, let current = tabs.selectedTemplate else { return }
-        if let other = settingsTab, other !== current {
-            tabs.selectTemplate(other)
-            if interface.templates.contains(where: { $0 === fuelTemplate }) {
-                interface.pop(to: fuelTemplate, animated: true, completion: nil)
-                return
-            }
-            tabs.selectTemplate(current)
-        }
-        if interface.templates.contains(where: { $0 === fuelTemplate }) {
-            interface.pop(to: fuelTemplate, animated: true, completion: nil)
-            return
-        }
-        settingsTab = current
-        interface.pushTemplate(fuelTemplate, animated: true, completion: nil)
-    }
-
     func sceneDidBecomeActive() {
         if model.customLocation != nil {
             model.resetToCurrentLocation()
@@ -446,5 +416,39 @@ extension CarPlayController {
         guard let image = renderer.uiImage?.withRenderingMode(.alwaysOriginal) else { return nil }
         images[key] = image
         return image
+    }
+}
+
+// MARK: - Settings
+
+extension CarPlayController {
+    /// The gear that opens the settings (fuels, radius, navigation app), the iPhone's symbol; one per template, as
+    /// a bar button belongs to a single navigation bar.
+    func settingsButton() -> CPBarButton {
+        let button = CPBarButton(image: UIImage(systemName: "gearshape") ?? UIImage()) { [weak self] _ in
+            self?.showSettings()
+        }
+        button.accessibilityLabel = "Réglages"
+        return button
+    }
+
+    /// Pushes the settings on the current tab. A template can be in one navigation stack only: when they are still
+    /// open on the other tab, that tab is shown instead.
+    func showSettings() {
+        guard let tabs = interface.rootTemplate as? CPTabBarTemplate, let current = tabs.selectedTemplate else { return }
+        if let other = settingsTab, other !== current {
+            tabs.select(other)
+            if interface.templates.contains(where: { $0 === fuelTemplate }) {
+                interface.pop(to: fuelTemplate, animated: true, completion: nil)
+                return
+            }
+            tabs.select(current)
+        }
+        if interface.templates.contains(where: { $0 === fuelTemplate }) {
+            interface.pop(to: fuelTemplate, animated: true, completion: nil)
+            return
+        }
+        settingsTab = current
+        interface.pushTemplate(fuelTemplate, animated: true, completion: nil)
     }
 }
