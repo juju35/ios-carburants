@@ -37,8 +37,11 @@ jobs:
       - name: Pick a simulator
         id: sim
         run: |
+          # An iPhone on the newest iOS runtime: the deployment target (27.1) is above the image's default 27.0 ones.
           id=$(xcrun simctl list devices available -j \
-            | jq -r '[.devices | to_entries[] | select(.key | test("iOS")) | .value[] | select(.name | startswith("iPhone"))][0].udid')
+            | jq -r '[.devices | to_entries[] | select(.key | test("iOS")) | {key, devices: .value}]
+              | sort_by(.key | capture("iOS-(?<major>[0-9]+)-(?<minor>[0-9]+)") | [(.major | tonumber), (.minor | tonumber)]) | reverse
+              | map(.devices[] | select(.name | startswith("iPhone")))[0].udid')
           test -n "$id" && test "$id" != null
           echo "id=$id" >> "$GITHUB_OUTPUT"
 
