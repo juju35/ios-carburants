@@ -184,13 +184,6 @@ struct StationBrowser: View {
 
     private var list: some View {
         List {
-            if !model.isSearching {
-                QuickFilters(model: model)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 8, trailing: 0))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-            }
-
             if let customTown = model.customTownName {
                 CustomTownRow(town: customTown) {
                     model.resetToCurrentLocation()
@@ -226,6 +219,14 @@ struct StationBrowser: View {
             footer
         }
         .listStyle(.plain)
+        // The capsules stay under the bar, as in Plans, instead of scrolling with the rows: as the list's first row
+        // they slid under the bar's scroll edge on the Mac and iPad panel, half hidden and blurred.
+        .safeAreaBar(edge: .top) {
+            if !model.isSearching {
+                QuickFilters(model: model)
+                    .padding(.vertical, 6)
+            }
+        }
         .scrollDismissesKeyboard(.interactively)
         .overlay {
             if model.visible.isEmpty, !model.filterText.isEmpty, completer.suggestions.isEmpty {
