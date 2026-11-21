@@ -105,7 +105,7 @@ shoot() {
     # Map tiles come from Apple's servers: the first launch takes longer.
     sleep $((n == 1 ? DELAY * 2 : DELAY))
     file=$(printf '%s/%02d-%s-%s.png' "$dir" "$n" "$screen" "$appearance")
-    xcrun simctl io "$udid" screenshot --type=png "$file" >/dev/null
+    snap "$udid" "$file" "$screen"
     echo "$file"
     n=$((n + 1))
   done
@@ -139,6 +139,12 @@ launch() {
   shift 2
   xcrun simctl terminate "$udid" "$BUNDLE" >/dev/null 2>&1 || true
   for attempt in 1 2 3 4 5; do
+    # The iOS 27.2 simulator sometimes shuts itself down after a failed launch: booted again before the next try.
+    if ! xcrun simctl list devices booted | grep -q "$udid"; then
+      echo "$udid shut down, booting it again"
+      (trap - ERR; xcrun simctl boot "$udid" 2>/dev/null) || true
+      xcrun simctl bootstatus "$udid" -b >/dev/null
+    fi
     if xcrun simctl launch "$udid" "$BUNDLE" -demo YES -demoScreen "$screen" -AppleLanguages '(fr)' -AppleLocale fr_FR \
       "$@" >/dev/null; then
       return 0
@@ -147,6 +153,26 @@ launch() {
     sleep 5
   done
   return 1
+}
+
+# snap <udid> <file> <screen>: the screenshot. The iOS 27.2 simulator (when the image has no 27.1 runtime) sometimes
+# times out on it ("Timeout waiting for screen surfaces", exit 60) or shuts down: the device is booted again if
+# needed, the screen opened again, and the screenshot tried again, a few times.
+snap() {
+  local attempt udid="$1" file="$2" screen="$3"
+  for attempt in 1 2 3; do
+    if (trap - ERR; xcrun simctl io "$udid" screenshot --type=png "$file" >/dev/null); then
+      return 0
+    fi
+    [ "$attempt" -lt 3 ] || return 1
+    echo "Screenshot $attempt failed on $udid ($screen), trying again"
+    if ! xcrun simctl list devices booted | grep -q "$udid"; then
+      (trap - ERR; xcrun simctl boot "$udid" 2>/dev/null) || true
+      xcrun simctl bootstatus "$udid" -b >/dev/null
+    fi
+    launch "$udid" "$screen"
+    sleep "$DELAY"
+  done
 }
 
 # retry <command...>: duoctl sometimes fails to reach the simulator right after a fold; tried again a few times.
