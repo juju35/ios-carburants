@@ -9,10 +9,10 @@ struct QuickFilters: View {
     var body: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
-                chip("Moins cher", symbol: "eurosign", on: model.sort == .price) {
+                chip("Moins cher", symbol: "eurosign", isOn: model.sort == .price) {
                     model.setSort(.price)
                 }
-                chip("Plus proche", symbol: "location.fill", on: model.sort == .distance) {
+                chip("Plus proche", symbol: "location.fill", isOn: model.sort == .distance) {
                     model.setSort(.distance)
                 }
 
@@ -32,44 +32,44 @@ struct QuickFilters: View {
         .sensoryFeedback(.selection, trigger: model.fuels)
     }
 
-    private func chip(_ title: String, symbol: String, on: Bool, action: @escaping () -> Void) -> some View {
+    private func chip(_ title: String, symbol: String, isOn: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Label(title, systemImage: symbol)
                 .font(.subheadline.weight(.semibold))
                 .labelStyle(ChipLabelStyle())
-                .foregroundStyle(on ? Color.white : Color.primary)
+                .foregroundStyle(isOn ? Color.white : Color.primary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
-                .background(on ? Color.blue : Color(.tertiarySystemFill), in: Capsule())
+                .background(isOn ? Color.blue : Color(.tertiarySystemFill), in: Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(on ? .isSelected : [])
+        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 
     private func fuelChip(_ fuel: Fuel) -> some View {
-        let on = model.fuels.contains(fuel)
+        let isOn = model.fuels.contains(fuel)
         return Button {
             withAnimation(.snappy) { model.toggleFuel(fuel) }
         } label: {
             HStack(spacing: 6) {
                 Circle()
-                    .fill(on ? fuel.textColor.opacity(0.85) : fuel.color)
+                    .fill(isOn ? fuel.textColor.opacity(0.85) : fuel.color)
                     .frame(width: 8, height: 8)
                 Text(fuel.short)
                     .font(.subheadline.weight(.semibold))
             }
-            .foregroundStyle(on ? fuel.textColor : Color.primary)
+            .foregroundStyle(isOn ? fuel.textColor : Color.primary)
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
-            .background(on ? fuel.color : Color(.tertiarySystemFill), in: Capsule())
+            .background(isOn ? fuel.color : Color(.tertiarySystemFill), in: Capsule())
             .overlay {
-                if on { Capsule().strokeBorder(Color.white.opacity(0.35), lineWidth: 1) }
+                if isOn { Capsule().strokeBorder(Color.white.opacity(0.35), lineWidth: 1) }
             }
         }
         .buttonStyle(.plain)
         // The last fuel stays on (setFuels ignores an empty list): the list needs at least one.
         .accessibilityLabel(fuel.summary)
-        .accessibilityAddTraits(on ? .isSelected : [])
+        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 }
 
