@@ -12,23 +12,22 @@ struct TownSuggestionsSection: View {
                     onSelect(suggestion)
                 } label: {
                     HStack(spacing: 12) {
+                        // Plans' red place glyph.
                         Image(systemName: "mappin.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(Color.accentColor)
+                            .font(.title)
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(.white, .red)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(suggestion.title)
                                 .font(.body)
                                 .foregroundStyle(.primary)
                             if !suggestion.subtitle.isEmpty {
                                 Text(suggestion.subtitle)
-                                    .font(.caption)
+                                    .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
                         }
                         Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
                     }
                 }
             }

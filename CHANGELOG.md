@@ -1,6 +1,19 @@
 # Changelog
 
-## Unreleased
+## 1.4.0
+
+### Design
+- Look Plans sur iPhone, iPad et Duo : champ de recherche sur toute la largeur de la feuille, capsules de tri
+  (moins cher / plus proche) et de carburants sous la recherche, en-tête « 6 stations · 10 km »
+- Lignes de résultats sans chevron, comme dans Plans : logo, distance et ville, statut d'ouverture avec seul
+  « Ouvert » / « Fermé » en couleur, prix à droite et étiquette verte « Moins cher »
+- Fiche station en carte de lieu Plans : nom en grand avec bouton de fermeture et de partage, bouton Itinéraire
+  bleu, bandeau Horaires · Distance · Prix, services et horaires avec icônes en carrés colorés, adresse copiable
+- Carte en relief (bâtiments, terrain), étiquette de prix agrandie et cerclée de bleu quand elle est choisie,
+  retour haptique à la sélection ; suggestions de villes avec l'épingle rouge de Plans
+- CarPlay : épingles rondes façon Plans (logo dans une bulle blanche, verte pour la moins chère), en-tête de liste
+  « Gazole · par prix · 10 km », pastille verte € pour la moins chère, fiche dans l'ordre de Plans (horaires,
+  distance, vos carburants d'abord, puis les autres)
 
 ### New
 - Rayon de recherche configurable (5, 10, 20, 30 ou 50 km), dans les préférences iPhone et dans les réglages

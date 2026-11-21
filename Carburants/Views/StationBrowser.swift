@@ -21,7 +21,7 @@ struct StationBrowser: View {
             root
                 .navigationDestination(for: Station.ID.self) { id in
                     if let station = model.station(id) {
-                        StationDetailView(station: station, fuels: model.fuels)
+                        StationDetailView(station: station, fuels: model.fuels, cheapest: model.isCheapest(station))
                             .modifier(ClearNavigationBackground())
                     } else {
                         ContentUnavailableView("Station introuvable", systemImage: "fuelpump.slash")
@@ -185,25 +185,11 @@ struct StationBrowser: View {
     private var list: some View {
         List {
             if let customTown = model.customTownName {
-                Section {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Recherche active")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text(customTown)
-                                .font(.headline)
-                        }
-                        Spacer()
-                        Button("Ma position") {
-                            model.resetToCurrentLocation()
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .buttonBorderShape(.capsule)
-                        .controlSize(.small)
-                    }
-                    .padding(.vertical, 4)
+                CustomTownRow(town: customTown) {
+                    model.resetToCurrentLocation()
                 }
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
             }
 
             if model.isSearching {
@@ -215,13 +201,32 @@ struct StationBrowser: View {
                     NavigationLink(value: station.id) {
                         StationRow(station: station, fuels: model.fuels, cheapest: model.isCheapest(station))
                     }
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    // Plans' result rows have no chevron.
+                    .navigationLinkIndicatorVisibility(.hidden)
+                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                    .listRowBackground(Color.clear)
+                    .alignmentGuide(.listRowSeparatorLeading) { _ in 62 }
+                }
+            } header: {
+                if !model.visible.isEmpty {
+                    Text(listHeader)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .textCase(nil)
                 }
             }
 
             footer
         }
         .listStyle(.plain)
+        // The capsules stay under the bar, as in Plans, instead of scrolling with the rows: as the list's first row
+        // they slid under the bar's scroll edge on the Mac and iPad panel, half hidden and blurred.
+        .safeAreaBar(edge: .top) {
+            if !model.isSearching {
+                QuickFilters(model: model)
+                    .padding(.vertical, 6)
+            }
+        }
         .scrollDismissesKeyboard(.interactively)
         .overlay {
             if model.visible.isEmpty, !model.filterText.isEmpty, completer.suggestions.isEmpty {
@@ -235,6 +240,12 @@ struct StationBrowser: View {
 
     private var footer: some View { BrowserFooter(model: model) }
 
+    /// "6 stations · 10 km", as Plans counts its results.
+    private var listHeader: String {
+        let count = model.visible.count
+        return "\(count) station\(count > 1 ? "s" : "") · \(model.radiusKm) km"
+    }
+
     // MARK: - Toolbar
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
@@ -246,24 +257,19 @@ struct StationBrowser: View {
             }
         } else if inlineSearch {
             ToolbarItem(placement: .principal) {
-                HStack(spacing: 8) {
-                    Text(navigationTitle)
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(.primary)
-                        .allowsHitTesting(false)
-                        .accessibilityHeading(.h1)
-                    InlineSearchField(
-                        text: $model.filterText,
-                        isSearching: $model.isSearching,
-                        isFocused: $isSearchFieldFocused,
-                        onSubmit: submitSearchQuery
-                    )
-                }
+                // The search field across the sheet, as in Plans.
+                InlineSearchField(
+                    text: $model.filterText,
+                    isSearching: $model.isSearching,
+                    isFocused: $isSearchFieldFocused,
+                    onSubmit: submitSearchQuery
+                )
+                .frame(minWidth: 220, maxWidth: .infinity)
             }
         }
 
-        ToolbarItem(placement: .topBarTrailing) {
-            if inlineSearch && (isSearchFieldFocused || model.isSearching || !model.filterText.isEmpty) {
+        if inlineSearch && (isSearchFieldFocused || model.isSearching || !model.filterText.isEmpty) {
+            ToolbarItem(placement: .topBarTrailing) {
                 Button("Annuler") {
                     withAnimation(.smooth) {
                         model.filterText = ""
@@ -272,31 +278,11 @@ struct StationBrowser: View {
                     }
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
-            } else {
-                Menu {
-                    Picker("Trier par", selection: Binding(get: { model.sort }, set: { model.setSort($0) })) {
-                        Label("Prix", systemImage: "eurosign").tag(StationOrder.price)
-                        Label("Distance", systemImage: "location").tag(StationOrder.distance)
-                    }
-
-                    Section("Application d’itinéraire") {
-                        Picker("Navigation", selection: Binding(
-                            get: { model.navigationApp },
-                            set: { model.setNavigationApp($0) }
-                        )) {
-                            ForEach(NavigationApp.allCases) { app in
-                                Label(app.title, systemImage: app.symbol).tag(app)
-                            }
-                        }
-                    }
-                } label: {
-                    Label("Trier", systemImage: "arrow.up.arrow.down")
-                }
             }
         }
 
-        // Pinned: stays at the trailing edge whatever the width (iPhone Duo cover screen, resized window), and when
-        // the sort menu goes to the overflow menu.
+        // Pinned: stays at the trailing edge whatever the width (iPhone Duo cover screen, resized window), as Plans
+        // keeps its account button beside the search field.
         ToolbarItem(placement: .topBarPinnedTrailing) {
             Button {
                 model.showsFuelPicker = true
@@ -330,12 +316,12 @@ private struct InlineSearchField: View {
     let onSubmit: () -> Void
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-                .font(.footnote)
+                .font(.body.weight(.medium))
             TextField(
-                "Rechercher",
+                "Station, ville, code postal",
                 text: $text,
                 onEditingChanged: { editing in
                     if editing {
@@ -345,7 +331,7 @@ private struct InlineSearchField: View {
                 }
             )
             .textFieldStyle(.plain)
-            .font(.subheadline)
+            .font(.body)
             .focused($isFocused)
             .submitLabel(.search)
             .onSubmit(onSubmit)
@@ -355,13 +341,13 @@ private struct InlineSearchField: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
-                        .font(.footnote)
+                        .font(.body)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
         .background(Color(.tertiarySystemFill), in: Capsule())
         .contentShape(Capsule())
         .onTapGesture {
@@ -388,7 +374,7 @@ private struct SearchableDrawerModifier: ViewModifier {
     func body(content: Content) -> some View {
         if enabled {
             content
-                .searchable(text: $text, isPresented: $isSearching, prompt: "Rechercher")
+                .searchable(text: $text, isPresented: $isSearching, prompt: "Station, ville, code postal")
                 .onSubmit(of: .search, onSubmit)
         } else {
             content
@@ -433,5 +419,38 @@ private struct BrowserFooter: View {
         .padding(.vertical, 12)
         .listRowInsets(EdgeInsets())
         .listRowBackground(Color.clear)
+    }
+}
+
+/// The town searched instead of the current position, with the way back to it, as a card at the top of the list.
+private struct CustomTownRow: View {
+    let town: String
+    let onReset: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "mappin.circle.fill")
+                .font(.title)
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(.white, .red)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Autour de")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(town)
+                    .font(.headline)
+                    .lineLimit(1)
+            }
+            Spacer()
+            Button(action: onReset) {
+                Label("Ma position", systemImage: "location.fill")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .tint(.blue)
+        }
+        .padding(12)
+        .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }

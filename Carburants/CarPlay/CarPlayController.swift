@@ -127,7 +127,9 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         )
         if shownList != listContent {
             listContent = shownList
-            listTemplate.updateSections([CPListSection(items: shownList.stations.map { listItem($0) })])
+            listTemplate.updateSections([
+                CPListSection(items: shownList.stations.map { listItem($0) }, header: listHeader, sectionIndexTitle: nil),
+            ])
         }
         if status != listStatus {
             listStatus = status
@@ -223,11 +225,12 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         let pinSize = CPPointOfInterest.pinImageSize.width > 0 ? CPPointOfInterest.pinImageSize.width : 40
         let selectedPinSize = CPPointOfInterest.selectedPinImageSize.width > 0 ? CPPointOfInterest.selectedPinImageSize.width : 48
 
-        let pin = cachedImage("pin-\(station.id)-\(model.isCheapest(station))-\(Int(pinSize))") {
-            StationLogo(station, size: pinSize).overlay { cheapestRing(station, size: pinSize) }
+        let cheapest = model.isCheapest(station)
+        let pin = cachedImage("pin-\(station.id)-\(cheapest)-\(Int(pinSize))") {
+            CarPlayPin(station: station, size: pinSize, cheapest: cheapest)
         }
-        let selectedPin = cachedImage("pin-selected-\(station.id)-\(model.isCheapest(station))-\(Int(selectedPinSize))") {
-            StationLogo(station, size: selectedPinSize).overlay { cheapestRing(station, size: selectedPinSize) }
+        let selectedPin = cachedImage("pin-selected-\(station.id)-\(cheapest)-\(Int(selectedPinSize))") {
+            CarPlayPin(station: station, size: selectedPinSize, cheapest: cheapest)
         }
 
         let point = CPPointOfInterest(
@@ -255,15 +258,27 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
         let detail = [priceLine(station, fuels: model.fuels), station.distanceKm.map(Format.distance), Opening.of(station)?.text]
             .compactMap { $0 }
             .joined(separator: " · ")
+        // The cheapest station gets Plans' green tag where the others have a chevron.
+        let cheapest = model.isCheapest(station)
+        let tag: UIImage? = cheapest ? cachedImage("cheapest-tag", cheapestTag) : nil
         let item = CPListItem(
-            text: station.name, detailText: detail, image: cachedImage("row-\(station.id)") { StationLogo(station, size: 44) }
+            text: station.name,
+            detailText: detail,
+            image: cachedImage("row-\(station.id)") { StationLogo(station, size: 44) },
+            accessoryImage: tag,
+            accessoryType: cheapest ? .none : .disclosureIndicator
         )
-        item.accessoryType = .disclosureIndicator
         item.handler = { [weak self] _, completion in
             self?.showDetail(station)
             completion()
         }
         return item
+    }
+
+    /// "Gazole · par prix · 10 km", over the list: what it shows and in which order.
+    private var listHeader: String {
+        let order = model.sort == .price ? "par prix" : "par distance"
+        return "\(Format.fuels(model.fuels)) · \(order) · \(model.radiusKm) km"
     }
 
     /// "1,689 €" with one fuel; "Gazole 1,689 €" with several.
@@ -273,7 +288,13 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
     }
 
     private func showDetail(_ station: Station) {
-        var items: [CPInformationItem] = Fuel.allCases.filter { station.sells($0) }.map { fuel in
+        // Plans' order: where and when first, then the prices, yours before the others.
+        var items: [CPInformationItem] = []
+        if let opening = Opening.of(station) { items.append(CPInformationItem(title: "Horaires", detail: opening.text)) }
+        if let distance = station.distanceKm { items.append(CPInformationItem(title: "Distance", detail: Format.distance(distance))) }
+        let sold = Fuel.allCases.filter { station.sells($0) }
+        let ordered = sold.filter { model.fuels.contains($0) } + sold.filter { !model.fuels.contains($0) }
+        items += ordered.map { fuel in
             let value = station.fuels[fuel]
             let detail: String = if let price = station.price(fuel) {
                 value?.updated.map { "\(Format.price(price)) · \(Format.ago($0))" } ?? Format.price(price)
@@ -285,8 +306,6 @@ final class CarPlayController: NSObject, CPPointOfInterestTemplateDelegate {
             return CPInformationItem(title: model.fuels.contains(fuel) ? "\(fuel.label) ★" : fuel.label, detail: detail)
         }
         items.append(CPInformationItem(title: "Adresse", detail: "\(station.prettyAddress), \(station.postcode) \(station.prettyCity)"))
-        if let opening = Opening.of(station) { items.append(CPInformationItem(title: "Horaires", detail: opening.text)) }
-        if let distance = station.distanceKm { items.append(CPInformationItem(title: "Distance", detail: Format.distance(distance))) }
 
         let go = CPTextButton(title: goTitle(for: station), textStyle: .confirm) { [weak self] _ in self?.navigate(to: station) }
         let template = CPInformationTemplate(
@@ -373,11 +392,11 @@ extension CarPlayController {
 // MARK: - Images
 
 extension CarPlayController {
-    @ViewBuilder
-    private func cheapestRing(_ station: Station, size: CGFloat) -> some View {
-        if model.isCheapest(station) {
-            RoundedRectangle(cornerRadius: size * 0.225, style: .continuous).strokeBorder(.green, lineWidth: 3)
-        }
+    private func cheapestTag() -> some View {
+        Image(systemName: "eurosign.circle.fill")
+            .font(.system(size: 22, weight: .semibold))
+            .symbolRenderingMode(.palette)
+            .foregroundStyle(.white, .green)
     }
 
     private func currentDisplayScale() -> CGFloat {
@@ -396,5 +415,26 @@ extension CarPlayController {
         guard let image = renderer.uiImage?.withRenderingMode(.alwaysOriginal) else { return nil }
         images[key] = image
         return image
+    }
+}
+
+/// A map pin as Plans draws a place in CarPlay: the logo tile in a round white bubble (green for the cheapest
+/// station) on a soft shadow, centred in the square CarPlay gives a pin, which it centres on the place.
+private struct CarPlayPin: View {
+    let station: Station
+    let size: CGFloat
+    let cheapest: Bool
+
+    var body: some View {
+        let bubble = size * 0.88
+        ZStack {
+            Circle().fill(cheapest ? Color.green : Color.white)
+            StationLogo(station, size: bubble * 0.64)
+        }
+        .frame(width: bubble, height: bubble)
+        .overlay(Circle().strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5))
+        .compositingGroup()
+        .shadow(color: .black.opacity(0.35), radius: size * 0.04, y: size * 0.02)
+        .frame(width: size, height: size)
     }
 }

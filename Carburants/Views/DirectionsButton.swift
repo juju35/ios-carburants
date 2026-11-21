@@ -39,6 +39,7 @@ struct DirectionsButton: View {
                 Spacer(minLength: 0)
                 Image(systemName: "car.fill")
                     .font(.title3)
+                    .symbolEffect(.bounce, value: travelTime != nil)
                 VStack(alignment: .center, spacing: 2) {
                     Text("Itinéraire")
                         .font(.headline)
@@ -56,8 +57,10 @@ struct DirectionsButton: View {
             open(defaultApp.url(for: station))
         }
         .buttonStyle(.borderedProminent)
-        .buttonBorderShape(.roundedRectangle(radius: 12))
+        .buttonBorderShape(.roundedRectangle(radius: 14))
         .controlSize(.large)
+        // Plans' blue, whatever the app's tint.
+        .tint(.blue)
         .task(id: station.id) {
             defaultApp = Preferences.shared.navigationApp
             travelTime = nil
