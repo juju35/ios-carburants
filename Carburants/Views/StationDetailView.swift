@@ -1,18 +1,24 @@
 import CarburantsKit
 import SwiftUI
 
-/// One station, as a place card in Plans: name and address, a big directions button, your fuels, the others,
-/// hours and services.
+/// One station, as a place card in Plans: the name in big type with a close button, the directions button, a strip
+/// of key facts (hours, distance, price), then your fuels, the others, hours, services and the address.
 struct StationDetailView: View {
     let station: Station
     let fuels: [Fuel]
+    var cheapest = false
+
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         List {
             Section {
                 header
                 DirectionsButton(station: station)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 12, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 8, trailing: 16))
+                    .listRowSeparator(.hidden)
+                FactsStrip(station: station, fuels: fuels, cheapest: cheapest)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                     .listRowSeparator(.hidden)
             }
             .listRowBackground(Color.clear)
@@ -35,53 +41,81 @@ struct StationDetailView: View {
 
             if !station.services.isEmpty || station.highway {
                 Section("Services") {
-                    if station.highway { Label("Autoroute", systemImage: "road.lanes") }
+                    if station.highway { ServiceRow(title: "Autoroute", symbol: "road.lanes") }
                     ForEach(station.services, id: \.self) { service in
-                        Label(service, systemImage: Self.symbol(for: service))
+                        ServiceRow(title: service, symbol: Self.symbol(for: service))
                     }
                 }
             }
 
             Section {
-                LabeledContent("Adresse") {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Adresse")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                     Text("\(station.prettyAddress)\n\(station.postcode) \(station.prettyCity)")
-                        .multilineTextAlignment(.trailing)
+                        .textSelection(.enabled)
+                }
+                .padding(.vertical, 2)
+                .contextMenu {
+                    Button("Copier l’adresse", systemImage: "doc.on.doc") {
+                        UIPasteboard.general.string = "\(station.prettyAddress), \(station.postcode) \(station.prettyCity)"
+                    }
                 }
             } footer: {
                 Text("Prix publiés par le ministère de l’Économie (data.economie.gouv.fr).")
             }
         }
         .listStyle(.insetGrouped)
+        .listSectionSpacing(.compact)
         .scrollContentBackground(.hidden)
         .navigationTitle(station.name)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden()
+        .toolbar {
+            // The name is in big type in the card itself, as in Plans: none in the bar.
+            ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                ShareLink(
+                    item: NavigationApp.appleMaps.url(for: station),
+                    subject: Text(station.name),
+                    message: Text(shareMessage)
+                ) {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .accessibilityLabel("Partager")
+                Button(role: .close) { dismiss() }
+            }
+        }
     }
 
     private var header: some View {
-        HStack(spacing: 14) {
-            StationLogo(station, size: 60)
+        HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(station.name)
-                    .font(.title3.weight(.bold))
+                    .font(.title2.weight(.bold))
                     .fixedSize(horizontal: false, vertical: true)
-                Text([station.distanceKm.map(Format.distance), station.prettyCity].compactMap { $0 }.joined(separator: " · "))
+                    .accessibilityAddTraits(.isHeader)
+                Text(station.highway ? "Station-service · Autoroute" : "Station-service · \(station.prettyCity)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                if let opening = Opening.of(station) {
-                    Text(opening.text)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(opening.state.color)
-                }
             }
+            Spacer(minLength: 8)
+            StationLogo(station, size: 56)
         }
-        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
         .listRowSeparator(.hidden)
+    }
+
+    private var shareMessage: String {
+        guard let best = station.best(fuels) else { return station.prettyAddress }
+        return "\(best.fuel.label) à \(Format.price(best.price)) — \(station.prettyAddress), \(station.prettyCity)"
     }
 
     @ViewBuilder private var hoursSection: some View {
         let today = Opening.now().day
         if Opening.alwaysOpen(station.hours) {
-            Section("Horaires") { Label("Ouvert 24h/24", systemImage: "clock") }
+            Section("Horaires") { ServiceRow(title: "Ouvert 24h/24", symbol: "clock.fill", tint: .green) }
         } else if !station.hours.isEmpty || station.automate24 {
             Section {
                 ForEach(station.hours, id: \.day) { day in
@@ -93,7 +127,7 @@ struct StationDetailView: View {
                     .fontWeight(day.day == today ? .semibold : .regular)
                 }
                 if station.automate24 {
-                    Label("Automate 24h/24", systemImage: "creditcard")
+                    ServiceRow(title: "Automate 24h/24", symbol: "creditcard.fill", tint: .orange)
                 }
             } header: {
                 Text("Horaires")
@@ -151,6 +185,91 @@ struct FuelPriceRow: View {
         guard let price else { return nil }
         if price.rupture != nil { return price.ruptureSince.map { "Depuis \(Format.since($0))" } }
         return price.updated.map { "Mis à jour \(Format.ago($0))" }
+    }
+}
+
+/// Plans' strip under the buttons: a few facts side by side, a small grey title over each, thin rules between.
+private struct FactsStrip: View {
+    let station: Station
+    let fuels: [Fuel]
+    let cheapest: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            if let opening = Opening.of(station) {
+                fact("Horaires") {
+                    Text(Self.status(opening))
+                        .foregroundStyle(opening.state.color)
+                }
+                rule
+            }
+            if let distance = station.distanceKm {
+                fact("Distance") { Text(Format.distance(distance)) }
+                rule
+            }
+            fact(fuels.count > 1 ? (station.best(fuels)?.fuel.short ?? "Prix") : "Prix") {
+                if let best = station.best(fuels) {
+                    Text(Format.price(best.price))
+                        .monospacedDigit()
+                        .foregroundStyle(cheapest ? .green : .primary)
+                } else {
+                    Text(station.inShortage(fuels) ? "Rupture" : "—")
+                        .foregroundStyle(station.inShortage(fuels) ? .red : .secondary)
+                }
+            }
+        }
+        .padding(.vertical, 10)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func fact<Value: View>(_ title: String, @ViewBuilder value: () -> Value) -> some View {
+        VStack(spacing: 3) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .textCase(.uppercase)
+                .foregroundStyle(.secondary)
+            value()
+                .font(.headline)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var rule: some View {
+        Rectangle()
+            .fill(Color(.separator))
+            .frame(width: 0.5, height: 32)
+            .padding(.top, 2)
+    }
+
+    /// The first word of the status ("Ouvert", "Fermé"), or "24h/24".
+    private static func status(_ opening: Opening) -> String {
+        switch opening.state {
+        case .always: "24h/24"
+        case .automate: "Automate"
+        case .open, .closed: opening.text.components(separatedBy: " · ").first ?? opening.text
+        }
+    }
+}
+
+/// A service with its symbol in a coloured rounded square, as Settings and Plans list features.
+private struct ServiceRow: View {
+    let title: String
+    let symbol: String
+    var tint: Color = .blue
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: symbol)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(tint.gradient, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        }
     }
 }
 

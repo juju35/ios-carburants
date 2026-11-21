@@ -21,12 +21,16 @@ struct StationMap: View {
                         cheapest: model.isCheapest(station),
                         selected: model.selectedID == station.id
                     )
-                    .onTapGesture { model.selectedID = station.id }
+                    .onTapGesture {
+                        withAnimation(.snappy) { model.selectedID = station.id }
+                    }
                 }
                 .annotationTitles(.hidden)
             }
         }
-        .mapStyle(.standard(pointsOfInterest: .excludingAll, showsTraffic: true))
+        // Plans' default look: buildings and terrain in relief, traffic, no other places competing with the prices.
+        .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .excludingAll, showsTraffic: true))
+        .sensoryFeedback(.selection, trigger: model.selectedID)
         .mapControls {
             MapUserLocationButton()
             MapCompass()
@@ -47,25 +51,24 @@ struct PriceTag: View {
         let fill: Color = cheapest ? .green : Color(.systemBackground)
         VStack(spacing: 0) {
             HStack(spacing: 5) {
-                StationLogo(station, size: 22)
+                StationLogo(station, size: selected ? 28 : 22)
                 Text(priceText)
-                    .font(.subheadline.weight(.semibold))
+                    .font((selected ? Font.body : .subheadline).weight(.bold))
                     .monospacedDigit()
                     .foregroundStyle(cheapest ? .white : .primary)
             }
             .padding(.leading, 3)
-            .padding(.trailing, 8)
+            .padding(.trailing, selected ? 10 : 8)
             .padding(.vertical, 3)
             .background(fill, in: Capsule())
-            .overlay(Capsule().strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 2))
+            .overlay(Capsule().strokeBorder(selected ? Color.blue : Color.primary.opacity(0.08), lineWidth: selected ? 2.5 : 0.5))
 
             Triangle()
                 .fill(fill)
                 .frame(width: 10, height: 6)
         }
         .compositingGroup()
-        .shadow(color: .black.opacity(0.25), radius: 3, y: 1)
-        .scaleEffect(selected ? 1.15 : 1, anchor: .bottom)
+        .shadow(color: .black.opacity(selected ? 0.3 : 0.2), radius: selected ? 8 : 3, y: selected ? 4 : 1)
         .animation(.snappy, value: selected)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(station.name), \(priceText)")
