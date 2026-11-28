@@ -13,6 +13,7 @@ on:
       - scripts/screenshots_post.py
       - scripts/screenshots_unchanged.py
       - scripts/carplay.py
+      - scripts/package_simulator.py
       - .github/workflows/screenshots.yml
   workflow_dispatch:
     inputs:
@@ -104,14 +105,37 @@ jobs:
             appstore/screenshots/ipad-13
             appstore/screenshots/iphone-duo
 
-  # Xcode 27's Device Hub has no CarPlay for simulators: Xcode 26's Simulator app, on macOS 26.
+  # Xcode 27's Device Hub has no CarPlay for simulators: Xcode 26's Simulator app is needed. macOS 26 runners have it
+  # but no iOS 27 simulator runtime (the app needs 27.1: the CarPlay job skipped there and kept the 26 screenshots),
+  # Xcode 27 runners have the runtimes but no Xcode 26. So the Simulator app (and the frameworks of its Xcode it loads)
+  # is taken from a macOS 26 runner to the Xcode 27 one, as on a Mac with both Xcodes (scripts/screenshots-local.sh).
+  carplay-simulator:
+    if: inputs.only != 'devices' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - name: Package Xcode 26's Simulator app
+        run: |
+          xcode=$(ls -d /Applications/Xcode_26.*.app | sort -V | tail -1)
+          echo "From $xcode"
+          python3 scripts/package_simulator.py "$xcode" "$RUNNER_TEMP/Xcode26.app"
+          ditto -c -k --keepParent "$RUNNER_TEMP/Xcode26.app" "$RUNNER_TEMP/simulator.zip"
+          du -sh "$RUNNER_TEMP/simulator.zip"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: carplay-simulator
+          path: ${{ runner.temp }}/simulator.zip
+          retention-days: 1
+
   # On some runners the CarPlay screen takes no input at all (clicks and keys land on the app's icon and nothing
   # happens, on every new simulator of that runner), on others it works: 4 runners at once, the first one that took the
   # screenshots wins (the repository is public, macOS runners cost nothing).
   carplay:
-    needs: app
+    needs: [app, carplay-simulator]
     if: inputs.only != 'devices'
-    runs-on: macos-26
+    runs-on: xcode-27
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
     strategy:
       fail-fast: false
       matrix:
@@ -122,16 +146,28 @@ jobs:
       - name: Tools
         run: python3 -m pip install --break-system-packages pillow numpy
 
+      # The image only has the iOS 27.0 and 27.2 simulators for the iPhone 17 Pro Max: 27.1, the deployment target.
+      - name: iOS 27.1 simulator runtime
+        run: xcodebuild -downloadPlatform iOS
+
       - uses: actions/download-artifact@v7
         with:
           name: app
           path: ${{ runner.temp }}
 
+      - uses: actions/download-artifact@v7
+        with:
+          name: carplay-simulator
+          path: ${{ runner.temp }}
+
       - name: Take screenshots
         run: |
           ditto -x -k "$RUNNER_TEMP/app.zip" "$RUNNER_TEMP"
+          ditto -x -k "$RUNNER_TEMP/simulator.zip" "$RUNNER_TEMP"
           # build/carplay-debug/taken when this runner took new ones.
-          APP="$RUNNER_TEMP/Carburants.app" ONLY=carplay scripts/screenshots.sh
+          APP="$RUNNER_TEMP/Carburants.app" ONLY=carplay \
+            CARPLAY_SIMULATOR="$RUNNER_TEMP/Xcode26.app/Contents/Developer/Applications/Simulator.app" \
+            scripts/screenshots.sh
 
       # The screenshots, with what the CarPlay screen showed before each tap, to see what went wrong.
       - if: always()
@@ -167,9 +203,13 @@ jobs:
               echo "CarPlay screenshots from $(basename "$carplay")"
               rm -rf appstore/screenshots/carplay
               cp -R "$carplay/appstore/screenshots/carplay" appstore/screenshots/
+              taken=1
               break
             fi
           done
+          if [ -z "${taken:-}" ] && [ -d "$shots/carplay-1" ]; then
+            echo "::warning title=CarPlay screenshots::no runner took new CarPlay screenshots, the previous ones kept"
+          fi
           python3 -m pip install --break-system-packages pillow
           python3 scripts/screenshots_post.py appstore/screenshots screenshots
 
