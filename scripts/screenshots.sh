@@ -284,7 +284,10 @@ shoot_carplay() {
     [ "$screen" != "-" ] || continue
     # Map tiles and logos.
     sleep $((n == 1 ? DELAY * 2 : DELAY / 2))
-    xcrun simctl io "$udid" screenshot --display=external --type=png "$(printf '%s/%02d-%s.png' "$tmp" "$n" "$screen")" >/dev/null
+    if ! opened=$(trap - ERR; python3 scripts/carplay.py shot "$udid" "$(printf '%s/%02d-%s.png' "$tmp" "$n" "$screen")" 2>&1); then
+      echo "::warning title=CarPlay screenshots::$screen: ${opened//$'\n'/ }, previous ones kept"
+      return 0
+    fi
     n=$((n + 1))
   done
   rm -rf "$dir"

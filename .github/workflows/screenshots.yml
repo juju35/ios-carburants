@@ -146,7 +146,8 @@ jobs:
       - name: Tools
         run: python3 -m pip install --break-system-packages pillow numpy
 
-      # The image only has the iOS 27.0 and 27.2 simulators for the iPhone 17 Pro Max: 27.1, the deployment target.
+      # The iOS 27.1 runtime (the deployment target) only runs the iPhone Duo; the iPhone 17 Pro Max has 27.0 (too
+      # old) and the 27.2 beta, whose screenshots time out. The CarPlay screen does not depend on the iPhone: the Duo.
       - name: iOS 27.1 simulator runtime
         run: xcodebuild -downloadPlatform iOS
 
@@ -165,7 +166,7 @@ jobs:
           ditto -x -k "$RUNNER_TEMP/app.zip" "$RUNNER_TEMP"
           ditto -x -k "$RUNNER_TEMP/simulator.zip" "$RUNNER_TEMP"
           # build/carplay-debug/taken when this runner took new ones.
-          APP="$RUNNER_TEMP/Carburants.app" ONLY=carplay \
+          APP="$RUNNER_TEMP/Carburants.app" ONLY=carplay CARPLAY_IPHONE="iPhone Duo" \
             CARPLAY_SIMULATOR="$RUNNER_TEMP/Xcode26.app/Contents/Developer/Applications/Simulator.app" \
             scripts/screenshots.sh
 
