@@ -236,7 +236,13 @@ shoot_carplay() {
   local runtime
   runtime=$(runtime_for "$CARPLAY_IPHONE")
   if [ -z "$simulator" ] || [ ! -d "$simulator" ] || [ -z "$runtime" ]; then
-    echo "::warning title=CarPlay screenshots::no Xcode 26 Simulator app ($simulator) or iOS $MIN_IOS runtime for $CARPLAY_IPHONE, previous ones kept. Installed: $(ls -d /Applications/Xcode*.app 2>/dev/null | tr '\n' ' '), $(xcrun simctl list runtimes | grep -c iOS) iOS runtimes"
+    local missing="no Xcode 26 Simulator app ($simulator) or iOS $MIN_IOS runtime for $CARPLAY_IPHONE. Installed: $(ls -d /Applications/Xcode*.app 2>/dev/null | tr '\n' ' '), $(xcrun simctl list runtimes | grep -c iOS) iOS runtimes"
+    # In CI, an error: kept silently, the previous screenshots went stale for weeks (still the iOS 26 ones).
+    if [ -n "${GITHUB_ACTIONS:-}" ]; then
+      echo "::error title=CarPlay screenshots::$missing"
+      return 1
+    fi
+    echo "CarPlay screenshots skipped, previous ones kept: $missing"
     return 0
   fi
   echo "CarPlay: $simulator, $runtime"
@@ -278,7 +284,10 @@ shoot_carplay() {
     [ "$screen" != "-" ] || continue
     # Map tiles and logos.
     sleep $((n == 1 ? DELAY * 2 : DELAY / 2))
-    xcrun simctl io "$udid" screenshot --display=external --type=png "$(printf '%s/%02d-%s.png' "$tmp" "$n" "$screen")" >/dev/null
+    if ! opened=$(trap - ERR; python3 scripts/carplay.py shot "$udid" "$(printf '%s/%02d-%s.png' "$tmp" "$n" "$screen")" 2>&1); then
+      echo "::warning title=CarPlay screenshots::$screen: ${opened//$'\n'/ }, previous ones kept"
+      return 0
+    fi
     n=$((n + 1))
   done
   rm -rf "$dir"

@@ -3,6 +3,7 @@
     python scripts/carplay.py open                  # I/O › External Displays › CarPlay
     python scripts/carplay.py tap <udid> <debug.png> # opens Carburants from its icon on the CarPlay screen
     python scripts/carplay.py click <udid> <x> <y>   # clicks that point of the CarPlay screen (800 x 480)
+    python scripts/carplay.py shot <udid> <file.png> # screenshot of the CarPlay screen, retried
 
 The CarPlay scene only starts from the app's icon on the CarPlay screen: the icon is found in a screenshot of that
 screen (the app icon, light or dark, matched at every size) and clicked through System Events, which needs
@@ -194,12 +195,16 @@ def changed(before: Image.Image, after: Image.Image) -> bool:
 
 
 def capture(udid: str, path: Path) -> Image.Image:
-    subprocess.run(
-        ["xcrun", "simctl", "io", udid, "screenshot", "--display=external", "--type=png", str(path)],
-        check=True,
-        capture_output=True,
-    )
-    return Image.open(path)
+    """The CarPlay screen. Retried: the simulator sometimes times out on it ("Timeout waiting for screen surfaces",
+    exit 60), above all the iOS 27.2 one."""
+    command = ["xcrun", "simctl", "io", udid, "screenshot", "--display=external", "--type=png", str(path)]
+    for attempt in range(5):
+        result = subprocess.run(command, capture_output=True, text=True, check=False)
+        if result.returncode == 0:
+            return Image.open(path)
+        print(f"CarPlay screenshot failed ({result.returncode}): {result.stderr.strip()}", file=sys.stderr)
+        time.sleep(3 * (attempt + 1))
+    raise SystemExit(f"No CarPlay screenshot: {result.stderr.strip()}")
 
 
 def grid_icon(screen: Image.Image) -> tuple[float, float] | None:
@@ -254,5 +259,7 @@ if __name__ == "__main__":
         tap(sys.argv[2], Path(sys.argv[3]))
     elif sys.argv[1:2] == ["click"] and len(sys.argv) == 5:
         click_inside(sys.argv[2], float(sys.argv[3]), float(sys.argv[4]))
+    elif sys.argv[1:2] == ["shot"] and len(sys.argv) == 4:
+        capture(sys.argv[2], Path(sys.argv[3]))
     else:
         raise SystemExit(__doc__)
